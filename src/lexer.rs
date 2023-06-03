@@ -75,6 +75,65 @@ mod test {
         let mut lexer = Lexer::new(String::from(test_input));
         for exp_tok in expected_tokens.into_iter() {
             let tok = lexer.next_token();
+            println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
+            assert_eq!(exp_tok, tok);
+        }
+    }
+
+    #[test]
+    fn test_full_syntax() {
+        let test_input = r#"
+            let five = 5;
+            let ten = 10;
+
+            let add = fn(x, y) {
+                 x + y;
+            };
+
+            let result = add(five, ten);
+        "#;
+        let expected_tokens = vec![
+            Token::Let,
+            Token::Ident(String::from("five")),
+            Token::Assign,
+            Token::Int(5),
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("ten")),
+            Token::Assign,
+            Token::Int(10),
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("add")),
+            Token::Assign,
+            Token::Function,
+            Token::OpenParen,
+            Token::Ident(String::from("x")),
+            Token::Comma,
+            Token::Ident(String::from("y")),
+            Token::CloseParen,
+            Token::OpenCurly,
+            Token::Ident(String::from("x")),
+            Token::Plus,
+            Token::Ident(String::from("y")),
+            Token::Semicolon,
+            Token::CloseCurly,
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("result")),
+            Token::Assign,
+            Token::Ident(String::from("add")),
+            Token::OpenParen,
+            Token::Ident(String::from("five")),
+            Token::Comma,
+            Token::Ident(String::from("ten")),
+            Token::CloseParen,
+            Token::Semicolon,
+        ];
+        let mut lexer = Lexer::new(String::from(test_input));
+        for exp_tok in expected_tokens.into_iter() {
+            let tok = lexer.next_token();
+            println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
     }
