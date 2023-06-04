@@ -24,16 +24,6 @@ impl Lexer {
         return lex;
     }
 
-    fn read_char(&mut self) {
-        if self.read_position >= self.input.len() {
-            self.ch = 0;
-        } else {
-            self.ch = self.input[self.read_position];
-        }
-        self.position = self.read_position;
-        self.read_position += 1;
-    }
-
     pub fn next_token(&mut self) -> Result<Token, FromUtf8Error> {
         self.skip_whitespace();
         let token = match self.ch {
@@ -56,11 +46,28 @@ impl Lexer {
                 let token_literal = self.read_number()?;
                 return Ok(Token::Int(token_literal));
             }
+
             0 => Token::Eof,
             _ => Token::Illegal,
         };
         self.read_char();
         return Ok(token);
+    }
+
+    fn read_char(&mut self) {
+        if self.read_position >= self.input.len() {
+            self.ch = 0;
+        } else {
+            self.ch = self.input[self.read_position];
+        }
+        self.position = self.read_position;
+        self.read_position += 1;
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.ch.is_ascii_whitespace() {
+            self.read_char();
+        }
     }
 
     fn read_identifier(&mut self) -> Result<String, FromUtf8Error> {
@@ -86,12 +93,6 @@ impl Lexer {
             "let" => Token::Let,
             "fn" => Token::Function,
             _ => Token::Ident(token_literal),
-        }
-    }
-
-    fn skip_whitespace(&mut self) {
-        while self.ch.is_ascii_whitespace() {
-            self.read_char();
         }
     }
 }
@@ -129,11 +130,9 @@ mod test {
         let test_input = r#"
             let five = 5;
             let ten = 10;
-
             let add = fn(x, y) {
                  x + y;
             };
-
             let result = add(five, ten);
         "#;
         let expected_tokens = vec![
@@ -176,9 +175,8 @@ mod test {
             Token::Eof,
         ];
         let mut lexer = Lexer::new(String::from(test_input));
-        for (idx, exp_tok) in expected_tokens.into_iter().enumerate() {
+        for exp_tok in expected_tokens.into_iter() {
             let tok = lexer.next_token()?;
-            println!("Evaluating token at index {:?}", idx);
             println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
