@@ -1,3 +1,5 @@
+use std::string::FromUtf8Error;
+
 use crate::token::Token;
 
 #[allow(dead_code)]
@@ -32,9 +34,9 @@ impl Lexer {
         self.read_position += 1;
     }
 
-    pub fn next_token(&mut self) -> Token {
-        let tok = match self.ch {
-            // Delimiters
+    pub fn next_token(&mut self) -> Result<Token, FromUtf8Error> {
+        self.skip_whitespace();
+        let token = match self.ch {
             b',' => Token::Comma,
             b';' => Token::Semicolon,
 
@@ -43,24 +45,65 @@ impl Lexer {
             b'{' => Token::OpenCurly,
             b'}' => Token::CloseCurly,
 
-            // Operators
             b'=' => Token::Assign,
             b'+' => Token::Plus,
 
-            // TODO: Handle rest of cases
-            _ => Token::Eof,
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+                let token_literal = self.read_identifier()?;
+                return Ok(Lexer::lookup_identifier(token_literal));
+            }
+            b'0'..=b'9' => {
+                let token_literal = self.read_number()?;
+                return Ok(Token::Int(token_literal));
+            }
+            0 => Token::Eof,
+            _ => Token::Illegal,
         };
         self.read_char();
-        return tok;
+        return Ok(token);
+    }
+
+    fn read_identifier(&mut self) -> Result<String, FromUtf8Error> {
+        let pos = self.position;
+        while self.ch.is_ascii_alphabetic() || self.ch == b'_' {
+            self.read_char();
+        }
+        let identifier = String::from_utf8(self.input[pos..self.position].into())?;
+        return Ok(identifier);
+    }
+
+    fn read_number(&mut self) -> Result<String, FromUtf8Error> {
+        let pos = self.position;
+        while self.ch.is_ascii_digit() {
+            self.read_char();
+        }
+        let identifier = String::from_utf8(self.input[pos..self.position].into())?;
+        return Ok(identifier);
+    }
+
+    fn lookup_identifier(token_literal: String) -> Token {
+        match token_literal.as_str() {
+            "let" => Token::Let,
+            "fn" => Token::Function,
+            _ => Token::Ident(token_literal),
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.ch.is_ascii_whitespace() {
+            self.read_char();
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::string::FromUtf8Error;
+
     use crate::{lexer::Lexer, token::Token};
 
     #[test]
-    fn test_next_token() {
+    fn test_next_token() -> Result<(), FromUtf8Error> {
         let test_input = "=+(){},;";
         let expected_tokens = vec![
             Token::Assign,
@@ -74,14 +117,15 @@ mod test {
         ];
         let mut lexer = Lexer::new(String::from(test_input));
         for exp_tok in expected_tokens.into_iter() {
-            let tok = lexer.next_token();
+            let tok = lexer.next_token()?;
             println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
+        Ok(())
     }
 
     #[test]
-    fn test_full_syntax() {
+    fn test_syntax() -> Result<(), FromUtf8Error> {
         let test_input = r#"
             let five = 5;
             let ten = 10;
@@ -96,12 +140,12 @@ mod test {
             Token::Let,
             Token::Ident(String::from("five")),
             Token::Assign,
-            Token::Int(5),
+            Token::Int(String::from("5")),
             Token::Semicolon,
             Token::Let,
             Token::Ident(String::from("ten")),
             Token::Assign,
-            Token::Int(10),
+            Token::Int(String::from("10")),
             Token::Semicolon,
             Token::Let,
             Token::Ident(String::from("add")),
@@ -129,12 +173,15 @@ mod test {
             Token::Ident(String::from("ten")),
             Token::CloseParen,
             Token::Semicolon,
+            Token::Eof,
         ];
         let mut lexer = Lexer::new(String::from(test_input));
-        for exp_tok in expected_tokens.into_iter() {
-            let tok = lexer.next_token();
+        for (idx, exp_tok) in expected_tokens.into_iter().enumerate() {
+            let tok = lexer.next_token()?;
+            println!("Evaluating token at index {:?}", idx);
             println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
+        Ok(())
     }
 }
