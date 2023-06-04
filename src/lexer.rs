@@ -37,6 +37,12 @@ impl Lexer {
 
             b'=' => Token::Assign,
             b'+' => Token::Plus,
+            b'-' => Token::Minus,
+            b'!' => Token::Bang,
+            b'*' => Token::Asterisk,
+            b'/' => Token::Slash,
+            b'<' => Token::LessThan,
+            b'>' => Token::GreaterThan,
 
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let token_literal = self.read_identifier()?;
@@ -92,6 +98,11 @@ impl Lexer {
         match token_literal.as_str() {
             "let" => Token::Let,
             "fn" => Token::Function,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "return" => Token::Return,
+            "true" => Token::True,
+            "false" => Token::False,
             _ => Token::Ident(token_literal),
         }
     }
@@ -134,6 +145,13 @@ mod test {
                  x + y;
             };
             let result = add(five, ten);
+            !-/*5;
+            5 < 10 > 5;
+            if (5 < 10) {
+                return true;
+            } else {
+                return false;
+            }
         "#;
         let expected_tokens = vec![
             Token::Let,
@@ -172,6 +190,35 @@ mod test {
             Token::Ident(String::from("ten")),
             Token::CloseParen,
             Token::Semicolon,
+            Token::Bang,
+            Token::Minus,
+            Token::Slash,
+            Token::Asterisk,
+            Token::Int(String::from("5")),
+            Token::Semicolon,
+            Token::Int(String::from("5")),
+            Token::LessThan,
+            Token::Int(String::from("10")),
+            Token::GreaterThan,
+            Token::Int(String::from("5")),
+            Token::Semicolon,
+            Token::If,
+            Token::OpenParen,
+            Token::Int(String::from("5")),
+            Token::LessThan,
+            Token::Int(String::from("10")),
+            Token::CloseParen,
+            Token::OpenCurly,
+            Token::Return,
+            Token::True,
+            Token::Semicolon,
+            Token::CloseCurly,
+            Token::Else,
+            Token::OpenCurly,
+            Token::Return,
+            Token::False,
+            Token::Semicolon,
+            Token::CloseCurly,
             Token::Eof,
         ];
         let mut lexer = Lexer::new(String::from(test_input));
