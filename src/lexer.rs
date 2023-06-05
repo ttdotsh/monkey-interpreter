@@ -35,10 +35,24 @@ impl Lexer {
             b'{' => Token::OpenCurly,
             b'}' => Token::CloseCurly,
 
-            b'=' => Token::Assign,
+            b'=' => {
+                if self.peek_next_char() == b'=' {
+                    self.read_char();
+                    Token::Equal
+                } else {
+                    Token::Assign
+                }
+            }
             b'+' => Token::Plus,
             b'-' => Token::Minus,
-            b'!' => Token::Bang,
+            b'!' => {
+                if self.peek_next_char() == b'=' {
+                    self.read_char();
+                    Token::NotEqual
+                } else {
+                    Token::Bang
+                }
+            }
             b'*' => Token::Asterisk,
             b'/' => Token::Slash,
             b'<' => Token::LessThan,
@@ -74,6 +88,13 @@ impl Lexer {
         while self.ch.is_ascii_whitespace() {
             self.read_char();
         }
+    }
+
+    fn peek_next_char(&self) -> u8 {
+        if self.read_position >= self.input.len() {
+            return 0;
+        }
+        return self.input[self.read_position];
     }
 
     fn read_identifier(&mut self) -> Result<String, FromUtf8Error> {
@@ -152,6 +173,8 @@ mod test {
             } else {
                 return false;
             }
+            10 == 10; 
+            10 != 9;
         "#;
         let expected_tokens = vec![
             Token::Let,
@@ -219,6 +242,14 @@ mod test {
             Token::False,
             Token::Semicolon,
             Token::CloseCurly,
+            Token::Int(String::from("10")),
+            Token::Equal,
+            Token::Int(String::from("10")),
+            Token::Semicolon,
+            Token::Int(String::from("10")),
+            Token::NotEqual,
+            Token::Int(String::from("9")),
+            Token::Semicolon,
             Token::Eof,
         ];
         let mut lexer = Lexer::new(String::from(test_input));
