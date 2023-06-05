@@ -1,9 +1,5 @@
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Token {
-    Illegal,
-    Eof,
-
     // Identifiers and literals
     Ident(String),
     Int(String),
@@ -37,4 +33,7 @@ pub enum Token {
     Return,
     True,
     False,
+
+    Illegal,
+    Eof,
 }

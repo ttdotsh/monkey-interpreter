@@ -2,7 +2,6 @@ use std::string::FromUtf8Error;
 
 use crate::token::Token;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Lexer {
     input: Vec<u8>,
@@ -11,7 +10,6 @@ pub struct Lexer {
     ch: u8,
 }
 
-#[allow(dead_code)]
 impl Lexer {
     pub fn new(input: String) -> Lexer {
         let mut lex = Lexer {
