@@ -5,6 +5,8 @@ mod repl;
 mod token;
 
 fn main() -> Result<()> {
-    repl::start(stdin().lock(), stdout())?;
+    let reader = stdin().lock();
+    let writer = stdout().lock();
+    repl::start(reader, writer)?;
     Ok(())
 }
