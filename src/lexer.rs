@@ -127,6 +127,17 @@ impl Lexer {
     }
 }
 
+impl Iterator for Lexer {
+    type Item = Result<Token, FromUtf8Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ch == 0 {
+            return None;
+        }
+        return Some(self.next_token());
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::string::FromUtf8Error;
