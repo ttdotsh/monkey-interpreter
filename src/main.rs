@@ -1,5 +1,6 @@
 use std::io::{stdin, stdout, Result};
 
+mod ast;
 mod lexer;
 mod repl;
 mod token;
