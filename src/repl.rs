@@ -15,7 +15,6 @@ pub fn start<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
 
         lexer
             .into_iter()
-            .filter_map(|t| t.ok())
             .try_for_each(|t| writeln!(&mut writer, "{:?}", t))?;
         writer.flush()?;
     }
