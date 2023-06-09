@@ -2,6 +2,7 @@ use std::io::{stdin, stdout, Result};
 
 mod ast;
 mod lexer;
+mod parser;
 mod repl;
 mod token;
 
