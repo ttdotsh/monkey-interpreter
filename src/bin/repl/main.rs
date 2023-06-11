@@ -1,8 +1,14 @@
-use std::io::{BufRead, Result, Write};
+use monkey_interpreter::lexer::Lexer;
+use std::io::{stdin, stdout, BufRead, Result, Write};
 
-use crate::lexer::Lexer;
+fn main() -> Result<()> {
+    let reader = stdin().lock();
+    let writer = stdout().lock();
+    repl(reader, writer)?;
+    Ok(())
+}
 
-pub fn start<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
+pub fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
     writeln!(writer, "Give the monkey some commands!")?;
 
     loop {

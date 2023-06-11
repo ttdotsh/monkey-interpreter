@@ -1,10 +1,9 @@
 use crate::{
     ast::{Expression, Identifier, Let, Program, Statement},
-    lexer::Lexer,
+    lex::Lexer,
     token::{Is, Token},
 };
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
@@ -99,7 +98,7 @@ impl Parser {
 mod test {
     use crate::{
         ast::{Identifier, Statement},
-        lexer::Lexer,
+        lex::Lexer,
         parser::{ParseError, Parser},
         token::Token,
     };

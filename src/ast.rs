@@ -1,12 +1,10 @@
 /*
 * Abstract Syntax Tree
 */
-#[allow(dead_code)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }
 
-#[allow(dead_code)]
 impl Program {
     pub fn new() -> Program {
         return Program {
@@ -18,12 +16,10 @@ impl Program {
 /*
 * Statements
 */
-#[allow(dead_code)]
 pub enum Statement {
     Let(Let),
 }
 
-#[allow(dead_code)]
 pub struct Let {
     pub name: Identifier,
     pub value: Expression,
@@ -32,7 +28,6 @@ pub struct Let {
 /*
 * Expressions
 */
-#[allow(dead_code)]
 pub enum Expression {
     Ident(Identifier),
 }

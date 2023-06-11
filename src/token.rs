@@ -38,7 +38,6 @@ pub enum Token {
     Eof,
 }
 
-#[allow(dead_code)]
 impl Token {
     pub fn extract_literal(&mut self) -> Option<String> {
         return match self {
