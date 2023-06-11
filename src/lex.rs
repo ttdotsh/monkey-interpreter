@@ -138,7 +138,7 @@ impl Iterator for Lexer {
 mod test {
     use std::string::FromUtf8Error;
 
-    use crate::{lexer::Lexer, token::Token};
+    use crate::{lex::Lexer, token::Token};
 
     #[test]
     fn test_next_token() -> Result<(), FromUtf8Error> {

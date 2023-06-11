@@ -1,4 +1,4 @@
-use monkey_interpreter::lexer::Lexer;
+use monkey_interpreter::lex::Lexer;
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 fn main() -> Result<()> {

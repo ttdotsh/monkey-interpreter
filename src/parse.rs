@@ -76,7 +76,7 @@ impl Parser {
         self.expect_next(expected_ident)?;
         let name = match self.current_token.extract_literal() {
             Some(s) => s,
-            None => return Err(ParseError::NoneTypeLiteral),
+            None => return Err(ParseError::NoneTypeLiteral), // I don't think this is possible?
         };
 
         self.expect_next(Token::Assign)?;
@@ -99,7 +99,7 @@ mod test {
     use crate::{
         ast::{Identifier, Statement},
         lex::Lexer,
-        parser::{ParseError, Parser},
+        parse::{ParseError, Parser},
         token::Token,
     };
 
