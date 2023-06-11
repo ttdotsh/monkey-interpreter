@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // Identifiers and literals
     Ident(String),
@@ -36,4 +36,33 @@ pub enum Token {
 
     Illegal,
     Eof,
+}
+
+#[allow(dead_code)]
+impl Token {
+    pub fn extract_literal(&mut self) -> Option<String> {
+        return match self {
+            Token::Ident(s) => Some(std::mem::take(s)),
+            Token::Int(s) => Some(std::mem::take(s)),
+            _ => None,
+        };
+    }
+}
+
+pub trait Is {
+    fn is(&self, token: &Self) -> bool;
+}
+
+impl Is for Token {
+    fn is(&self, token: &Self) -> bool {
+        if self == token {
+            return true;
+        }
+
+        return match (self, token) {
+            (Token::Ident(_), Token::Ident(_)) => true,
+            (Token::Int(_), Token::Int(_)) => true,
+            _ => false,
+        };
+    }
 }
