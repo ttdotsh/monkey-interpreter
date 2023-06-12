@@ -1,7 +1,8 @@
 use crate::{
-    ast::{Expression, Identifier, Let, Program, Statement},
+    ast::{Expression, Identifier, Let, Program, Return, Statement},
+    is::Is,
     lex::Lexer,
-    token::{Is, Token},
+    token::Token,
 };
 
 #[derive(Debug, PartialEq)]
@@ -67,6 +68,13 @@ impl Parser {
                     None
                 }
             },
+            Token::Return => match self.parse_return_statement() {
+                Ok(statement) => Some(Statement::Return(statement)),
+                Err(e) => {
+                    self.errors.push(e);
+                    None
+                }
+            },
             _ => None,
         }
     }
@@ -92,12 +100,25 @@ impl Parser {
             value: Expression::Ident(Identifier(value)),
         });
     }
+
+    fn parse_return_statement(&mut self) -> Result<Return, ParseError> {
+        self.step();
+
+        // todo!("implement parsing expressions");
+        while self.current_token != Token::Semicolon {
+            self.step();
+        }
+        let value = String::from("value");
+
+        return Ok(Return(Expression::Ident(Identifier(value))));
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{Identifier, Statement},
+        ast::{Expression, Identifier, Return, Statement},
+        is::Is,
         lex::Lexer,
         parse::{ParseError, Parser},
         token::Token,
@@ -122,9 +143,35 @@ mod test {
             Identifier(String::from("foobar")),
         ];
 
-        for (i, Statement::Let(ls)) in program.statements.into_iter().enumerate() {
-            assert_eq!(expected_indents[i], ls.name);
-            // todo!("add expected expressions here");
+        for (i, statement) in program.statements.into_iter().enumerate() {
+            if let Statement::Let(ls) = statement {
+                assert_eq!(expected_indents[i], ls.name);
+                // todo!("add expected expressions here");
+            } else {
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_return_statement() {
+        let test_input = r#"
+            return 5;
+            return 10;
+            return 993322;
+        "#;
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 3);
+
+        // TODO: this is gross 👇
+        let expected_statement_type = Statement::Return(Return(Expression::Ident(Identifier(
+            String::from("/* Value */"),
+        ))));
+        for statement in program.statements {
+            assert!(statement.is(&expected_statement_type));
         }
     }
 

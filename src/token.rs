@@ -1,3 +1,5 @@
+use crate::is::Is;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // Identifiers and literals
@@ -46,10 +48,6 @@ impl Token {
             _ => None,
         };
     }
-}
-
-pub trait Is {
-    fn is(&self, token: &Self) -> bool;
 }
 
 impl Is for Token {
