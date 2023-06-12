@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Identifier, Let, Program, Return, Statement},
+    ast::{Expression, Let, Program, Statement},
     is::Is,
     lex::Lexer,
     token::Token,
@@ -96,12 +96,12 @@ impl Parser {
         let value = String::from("value");
 
         return Ok(Let {
-            name: Identifier(name),
-            value: Expression::Ident(Identifier(value)),
+            name,
+            value: Expression::Ident(value),
         });
     }
 
-    fn parse_return_statement(&mut self) -> Result<Return, ParseError> {
+    fn parse_return_statement(&mut self) -> Result<Expression, ParseError> {
         self.step();
 
         // todo!("implement parsing expressions");
@@ -110,14 +110,14 @@ impl Parser {
         }
         let value = String::from("value");
 
-        return Ok(Return(Expression::Ident(Identifier(value))));
+        return Ok(Expression::Ident(value));
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{Expression, Identifier, Return, Statement},
+        ast::{Expression, Let, Statement},
         is::Is,
         lex::Lexer,
         parse::{ParseError, Parser},
@@ -137,14 +137,15 @@ mod test {
 
         assert_eq!(program.statements.len(), 3);
 
-        let expected_indents = vec![
-            Identifier(String::from("x")),
-            Identifier(String::from("y")),
-            Identifier(String::from("foobar")),
-        ];
+        let expected_indents = vec![String::from("x"), String::from("y"), String::from("foobar")];
+        let expected_statement_type = Statement::Let(Let {
+            name: String::from("/* Variable Name */"),
+            value: Expression::Ident(String::from("/* Variable Value */")),
+        });
 
         for (i, statement) in program.statements.into_iter().enumerate() {
-            if let Statement::Let(ls) = statement {
+            if let Statement::Let(ls) = &statement {
+                assert!(statement.is(&expected_statement_type));
                 assert_eq!(expected_indents[i], ls.name);
                 // todo!("add expected expressions here");
             } else {
@@ -166,10 +167,8 @@ mod test {
 
         assert_eq!(program.statements.len(), 3);
 
-        // TODO: this is gross 👇
-        let expected_statement_type = Statement::Return(Return(Expression::Ident(Identifier(
-            String::from("/* Value */"),
-        ))));
+        let expected_statement_type =
+            Statement::Return(Expression::Ident(String::from("/* Value */")));
         for statement in program.statements {
             assert!(statement.is(&expected_statement_type));
         }

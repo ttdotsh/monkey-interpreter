@@ -20,21 +20,21 @@ impl Program {
 */
 pub enum Statement {
     Let(Let),
-    Return(Return),
+    Return(Expression),
+    Expression(Expression),
 }
 
 pub struct Let {
-    pub name: Identifier,
+    pub name: String,
     pub value: Expression,
 }
-
-pub struct Return(pub Expression);
 
 impl Is for Statement {
     fn is(&self, subject: &Self) -> bool {
         match (self, subject) {
             (Statement::Let(_), Statement::Let(_)) => true,
             (Statement::Return(_), Statement::Return(_)) => true,
+            (Statement::Expression(_), Statement::Expression(_)) => true,
             _ => false,
         }
     }
@@ -44,8 +44,5 @@ impl Is for Statement {
 * Expressions
 */
 pub enum Expression {
-    Ident(Identifier),
+    Ident(String),
 }
-
-#[derive(Debug, PartialEq)]
-pub struct Identifier(pub String);
