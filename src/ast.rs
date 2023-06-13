@@ -24,11 +24,6 @@ pub enum Statement {
     Expression(Expression),
 }
 
-pub struct Let {
-    pub name: String,
-    pub value: Expression,
-}
-
 impl Is for Statement {
     fn is(&self, subject: &Self) -> bool {
         match (self, subject) {
