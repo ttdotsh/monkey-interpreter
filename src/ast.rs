@@ -19,7 +19,7 @@ impl Program {
 * Statements
 */
 pub enum Statement {
-    Let(Let),
+    Let { name: String, value: Expression },
     Return(Expression),
     Expression(Expression),
 }
@@ -32,7 +32,7 @@ pub struct Let {
 impl Is for Statement {
     fn is(&self, subject: &Self) -> bool {
         match (self, subject) {
-            (Statement::Let(_), Statement::Let(_)) => true,
+            (Statement::Let { .. }, Statement::Let { .. }) => true,
             (Statement::Return(_), Statement::Return(_)) => true,
             (Statement::Expression(_), Statement::Expression(_)) => true,
             _ => false,
