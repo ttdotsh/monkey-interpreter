@@ -29,4 +29,5 @@ pub enum Statement {
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     Ident(String),
+    IntLiteral(i64),
 }

@@ -9,6 +9,7 @@ enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
     NoneTypeLiteral,
     ExpectedExpression,
+    ParseIntError,
 }
 
 struct Parser {
@@ -127,6 +128,10 @@ impl Parser {
     fn parse_expression(&self, _precedence: Precedence) -> Result<Expression, ParseError> {
         match &self.current_token {
             Token::Ident(s) => Ok(Expression::Ident(s.to_owned())),
+            Token::Int(s) => {
+                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError)?;
+                Ok(Expression::IntLiteral(int_literal))
+            }
             _ => Err(ParseError::ExpectedExpression),
         }
     }
@@ -238,5 +243,33 @@ mod test {
         for e in expected_errors {
             assert!(parser.errors.contains(&e));
         }
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let test_input = "foobar;";
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(parser.errors.len(), 0);
+        assert_eq!(program.statements.len(), 1);
+
+        let expected_statement = Statement::Expression(Expression::Ident(String::from("foobar")));
+        assert_eq!(expected_statement, program.statements[0]);
+    }
+
+    #[test]
+    fn test_int_literal_expression() {
+        let test_input = "5;";
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(parser.errors.len(), 0);
+        assert_eq!(program.statements.len(), 1);
+
+        let expected_statement = Statement::Expression(Expression::IntLiteral(5));
+        assert_eq!(expected_statement, program.statements[0]);
     }
 }
