@@ -1,6 +1,5 @@
 use crate::{
     ast::{Expression, Program, Statement},
-    is::Is,
     lex::Lexer,
     token::Token,
 };
