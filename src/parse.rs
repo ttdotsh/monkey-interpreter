@@ -8,6 +8,7 @@ use crate::{
 enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
     NoneTypeLiteral,
+    ExpectedExpression,
 }
 
 struct Parser {
@@ -68,13 +69,19 @@ impl Parser {
                 }
             },
             Token::Return => match self.parse_return_statement() {
-                Ok(statement) => Some(Statement::Return(statement)),
+                Ok(expr) => Some(Statement::Return(expr)),
                 Err(e) => {
                     self.errors.push(e);
                     None
                 }
             },
-            _ => None,
+            _ => match self.parse_expression_statement() {
+                Ok(expr) => Some(Statement::Expression(expr)),
+                Err(e) => {
+                    self.errors.push(e);
+                    None
+                }
+            },
         }
     }
 
@@ -108,12 +115,53 @@ impl Parser {
 
         return Ok(Expression::Ident(value));
     }
+
+    fn parse_expression_statement(&mut self) -> Result<Expression, ParseError> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if self.peek_token.is(&Token::Semicolon) {
+            self.step();
+        }
+        return Ok(expression);
+    }
+
+    fn parse_expression(&self, _precedence: Precedence) -> Result<Expression, ParseError> {
+        match &self.current_token {
+            Token::Ident(s) => Ok(Expression::Ident(s.to_owned())),
+            _ => Err(ParseError::ExpectedExpression),
+        }
+    }
+}
+
+#[allow(dead_code)]
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // < or >
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -x or !x
+    Call,        // my_function(x)
+}
+
+#[allow(dead_code)]
+impl Precedence {
+    fn value(&self) -> i32 {
+        match self {
+            Precedence::Lowest => 1,
+            Precedence::Equals => 2,
+            Precedence::LessGreater => 3,
+            Precedence::Sum => 4,
+            Precedence::Product => 5,
+            Precedence::Prefix => 6,
+            Precedence::Call => 7,
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::Statement,
+        ast::{Expression, Statement},
         lex::Lexer,
         parse::{ParseError, Parser},
         token::Token,
@@ -174,9 +222,7 @@ mod test {
         "#;
         let lexer = Lexer::new(test_input.into());
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-
-        assert_eq!(program.statements.len(), 0);
+        let _program = parser.parse_program();
 
         let expected_errors = vec![
             ParseError::UnexpectedToken {
@@ -188,8 +234,9 @@ mod test {
                 recieved: Token::Ident(String::from("y")),
             },
         ];
-        for (i, error) in parser.errors.into_iter().enumerate() {
-            assert_eq!(expected_errors[i], error);
+
+        for e in expected_errors {
+            assert!(parser.errors.contains(&e));
         }
     }
 }

@@ -16,6 +16,7 @@ impl Program {
 /*
 * Statements
 */
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     Let { name: String, value: Expression },
     Return(Expression),
@@ -25,6 +26,7 @@ pub enum Statement {
 /*
 * Expressions
 */
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Ident(String),
 }
