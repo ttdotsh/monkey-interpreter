@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Program, Statement},
+    ast::{Expression, Operator, Program, Statement},
     lex::Lexer,
     token::Token,
 };
@@ -9,7 +9,7 @@ enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
     NoneTypeLiteral,
     ExpectedExpression,
-    ParseIntError,
+    ParseIntError(String),
 }
 
 struct Parser {
@@ -118,19 +118,34 @@ impl Parser {
     }
 
     fn parse_expression_statement(&mut self) -> Result<Expression, ParseError> {
-        let expression = self.parse_expression(Precedence::Lowest)?;
+        let expression = self.parse_expression()?;
         if self.peek_token.is(&Token::Semicolon) {
             self.step();
         }
         return Ok(expression);
     }
 
-    fn parse_expression(&self, _precedence: Precedence) -> Result<Expression, ParseError> {
+    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         match &self.current_token {
             Token::Ident(s) => Ok(Expression::Ident(s.to_owned())),
             Token::Int(s) => {
-                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError)?;
+                // TODO: figure out if this should move the string rather than copy
+                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError(s.into()))?;
                 Ok(Expression::IntLiteral(int_literal))
+            }
+            Token::Bang => {
+                self.step();
+                Ok(Expression::Prefix {
+                    operator: Operator::Bang,
+                    operand: Box::new(self.parse_expression()?),
+                })
+            }
+            Token::Minus => {
+                self.step();
+                Ok(Expression::Prefix {
+                    operator: Operator::Minus,
+                    operand: Box::new(self.parse_expression()?),
+                })
             }
             _ => Err(ParseError::ExpectedExpression),
         }
@@ -166,7 +181,7 @@ impl Precedence {
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{Expression, Statement},
+        ast::{Expression, Operator, Statement},
         lex::Lexer,
         parse::{ParseError, Parser},
         token::Token,
@@ -246,7 +261,7 @@ mod test {
     }
 
     #[test]
-    fn test_identifier_expression() {
+    fn test_parse_identifier_expression() {
         let test_input = "foobar;";
         let lexer = Lexer::new(test_input.into());
         let mut parser = Parser::new(lexer);
@@ -260,7 +275,7 @@ mod test {
     }
 
     #[test]
-    fn test_int_literal_expression() {
+    fn test_parse_int_literal_expression() {
         let test_input = "5;";
         let lexer = Lexer::new(test_input.into());
         let mut parser = Parser::new(lexer);
@@ -271,5 +286,33 @@ mod test {
 
         let expected_statement = Statement::Expression(Expression::IntLiteral(5));
         assert_eq!(expected_statement, program.statements[0]);
+    }
+
+    #[test]
+    fn test_parse_prefix_expression() {
+        let test_input = r#"
+            !5;
+            -15;
+        "#;
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 2);
+
+        let expected_expressions = vec![
+            Statement::Expression(Expression::Prefix {
+                operator: Operator::Bang,
+                operand: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Prefix {
+                operator: Operator::Minus,
+                operand: Box::new(Expression::IntLiteral(15)),
+            }),
+        ];
+
+        for (i, expr) in expected_expressions.into_iter().enumerate() {
+            assert_eq!(expr, program.statements[i]);
+        }
     }
 }

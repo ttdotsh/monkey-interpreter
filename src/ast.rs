@@ -30,4 +30,17 @@ pub enum Statement {
 pub enum Expression {
     Ident(String),
     IntLiteral(i64),
+    Prefix {
+        operator: Operator,
+        operand: Box<Expression>,
+    },
+}
+
+/*
+* Operators
+*/
+#[derive(Debug, PartialEq)]
+pub enum Operator {
+    Bang,
+    Minus,
 }
