@@ -1,3 +1,5 @@
+use crate::token::Token;
+
 /*
 * Abstract Syntax Tree
 */
@@ -32,7 +34,12 @@ pub enum Expression {
     IntLiteral(i64),
     Prefix {
         operator: Operator,
-        operand: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Infix {
+        left: Box<Expression>,
+        operator: Operator,
+        right: Box<Expression>,
     },
 }
 
@@ -42,5 +49,12 @@ pub enum Expression {
 #[derive(Debug, PartialEq)]
 pub enum Operator {
     Bang,
+    Plus,
     Minus,
+    Multiplication,
+    Division,
+    GreaterThan,
+    LessThan,
+    Equals,
+    NotEquals,
 }

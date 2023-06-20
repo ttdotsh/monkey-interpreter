@@ -10,6 +10,7 @@ enum ParseError {
     NoneTypeLiteral,
     ExpectedExpression,
     ParseIntError(String),
+    ExpectedOperator,
 }
 
 struct Parser {
@@ -118,15 +119,26 @@ impl Parser {
     }
 
     fn parse_expression_statement(&mut self) -> Result<Expression, ParseError> {
-        let expression = self.parse_expression()?;
+        let expression = self.parse_expression(Precedence::Lowest)?;
         if self.peek_token.is(&Token::Semicolon) {
             self.step();
         }
         return Ok(expression);
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        match &self.current_token {
+    fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expression, ParseError> {
+        let mut expression = self.parse_prefix_expression()?;
+        while !self.current_token.is(&Token::Semicolon)
+            && cur_precedence.value() < self.peek_token.precedence().value()
+        {
+            self.step();
+            expression = self.parse_infix_expression(expression)?;
+        }
+        return Ok(expression);
+    }
+
+    fn parse_prefix_expression(&mut self) -> Result<Expression, ParseError> {
+        return match &self.current_token {
             Token::Ident(s) => Ok(Expression::Ident(s.to_owned())),
             Token::Int(s) => {
                 // TODO: figure out if this should move the string rather than copy
@@ -137,28 +149,50 @@ impl Parser {
                 self.step();
                 Ok(Expression::Prefix {
                     operator: Operator::Bang,
-                    operand: Box::new(self.parse_expression()?),
+                    right: Box::new(self.parse_expression(Precedence::Lowest)?),
                 })
             }
             Token::Minus => {
                 self.step();
                 Ok(Expression::Prefix {
                     operator: Operator::Minus,
-                    operand: Box::new(self.parse_expression()?),
+                    right: Box::new(self.parse_expression(Precedence::Lowest)?),
                 })
             }
             _ => Err(ParseError::ExpectedExpression),
-        }
+        };
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
+        let precedence = self.current_token.precedence();
+        let operator = match self.current_token {
+            Token::Asterisk => Operator::Multiplication,
+            Token::Slash => Operator::Division,
+            Token::Plus => Operator::Plus,
+            Token::Minus => Operator::Minus,
+            Token::LessThan => Operator::LessThan,
+            Token::GreaterThan => Operator::GreaterThan,
+            Token::Equal => Operator::Equals,
+            Token::NotEqual => Operator::NotEquals,
+            _ => return Err(ParseError::ExpectedOperator),
+        };
+        self.step();
+        let right = self.parse_expression(precedence)?;
+        Ok(Expression::Infix {
+            left: Box::new(left),
+            operator,
+            right: Box::new(right),
+        })
     }
 }
 
 #[allow(dead_code)]
 enum Precedence {
     Lowest,
-    Equals,      // ==
+    Equality,    // == or !=
     LessGreater, // < or >
-    Sum,         // +
-    Product,     // *
+    AddSub,      // + or -
+    MultDiv,     // * or /
     Prefix,      // -x or !x
     Call,        // my_function(x)
 }
@@ -168,12 +202,24 @@ impl Precedence {
     fn value(&self) -> i32 {
         match self {
             Precedence::Lowest => 1,
-            Precedence::Equals => 2,
+            Precedence::Equality => 2,
             Precedence::LessGreater => 3,
-            Precedence::Sum => 4,
-            Precedence::Product => 5,
+            Precedence::AddSub => 4,
+            Precedence::MultDiv => 5,
             Precedence::Prefix => 6,
             Precedence::Call => 7,
+        }
+    }
+}
+
+impl Token {
+    fn precedence(&self) -> Precedence {
+        match self {
+            Token::Asterisk | Token::Slash => Precedence::MultDiv,
+            Token::Plus | Token::Minus => Precedence::AddSub,
+            Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
+            Token::Equal | Token::NotEqual => Precedence::Equality,
+            _ => Precedence::Lowest,
         }
     }
 }
@@ -299,15 +345,84 @@ mod test {
         let program = parser.parse_program();
 
         assert_eq!(program.statements.len(), 2);
+        assert_eq!(parser.errors.len(), 0);
 
         let expected_expressions = vec![
             Statement::Expression(Expression::Prefix {
                 operator: Operator::Bang,
-                operand: Box::new(Expression::IntLiteral(5)),
+                right: Box::new(Expression::IntLiteral(5)),
             }),
             Statement::Expression(Expression::Prefix {
                 operator: Operator::Minus,
-                operand: Box::new(Expression::IntLiteral(15)),
+                right: Box::new(Expression::IntLiteral(15)),
+            }),
+        ];
+
+        for (i, expr) in expected_expressions.into_iter().enumerate() {
+            assert_eq!(expr, program.statements[i]);
+        }
+    }
+
+    #[test]
+    fn test_parse_infix_expression() {
+        let test_input = r#"
+            5 + 5;
+            5 - 5;
+            5 * 5;
+            5 / 5;
+            5 > 5;
+            5 < 5;
+            5 == 5;
+            5 != 5;
+       "#;
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 8);
+        println!("{:?}", parser.errors);
+        assert_eq!(parser.errors.len(), 0);
+
+        let expected_expressions = vec![
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::Plus,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::Minus,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::Multiplication,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::Division,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::GreaterThan,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::LessThan,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::Equals,
+                right: Box::new(Expression::IntLiteral(5)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::IntLiteral(5)),
+                operator: Operator::NotEquals,
+                right: Box::new(Expression::IntLiteral(5)),
             }),
         ];
 
