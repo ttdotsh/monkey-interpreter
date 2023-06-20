@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq)]
-enum ParseError {
+pub enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
     NoneTypeLiteral,
     ExpectedExpression,
@@ -97,7 +97,7 @@ impl Parser {
 
         self.expect_next(Token::Assign)?;
 
-        // todo!("implement parsing expressions");
+        // TODO: implement parsing expressions");
         while self.current_token != Token::Semicolon {
             self.step();
         }
@@ -109,7 +109,7 @@ impl Parser {
     fn parse_return_statement(&mut self) -> Result<Expression, ParseError> {
         self.step();
 
-        // todo!("implement parsing expressions");
+        // TODO: implement parsing expressions");
         while self.current_token != Token::Semicolon {
             self.step();
         }
@@ -165,17 +165,7 @@ impl Parser {
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         let precedence = self.current_token.precedence();
-        let operator = match self.current_token {
-            Token::Asterisk => Operator::Multiplication,
-            Token::Slash => Operator::Division,
-            Token::Plus => Operator::Plus,
-            Token::Minus => Operator::Minus,
-            Token::LessThan => Operator::LessThan,
-            Token::GreaterThan => Operator::GreaterThan,
-            Token::Equal => Operator::Equals,
-            Token::NotEqual => Operator::NotEquals,
-            _ => return Err(ParseError::ExpectedOperator),
-        };
+        let operator = Operator::try_from(&self.current_token)?;
         self.step();
         let right = self.parse_expression(precedence)?;
         Ok(Expression::Infix {
@@ -208,6 +198,24 @@ impl Precedence {
             Precedence::MultDiv => 5,
             Precedence::Prefix => 6,
             Precedence::Call => 7,
+        }
+    }
+}
+
+impl TryFrom<&Token> for Operator {
+    type Error = ParseError;
+
+    fn try_from(value: &Token) -> Result<Self, Self::Error> {
+        match value {
+            Token::Equal => Ok(Operator::Equals),
+            Token::NotEqual => Ok(Operator::NotEquals),
+            Token::LessThan => Ok(Operator::LessThan),
+            Token::GreaterThan => Ok(Operator::GreaterThan),
+            Token::Plus => Ok(Operator::Plus),
+            Token::Minus => Ok(Operator::Minus),
+            Token::Asterisk => Ok(Operator::Multiplication),
+            Token::Slash => Ok(Operator::Division),
+            _ => Err(Self::Error::ExpectedOperator),
         }
     }
 }
@@ -252,7 +260,7 @@ mod test {
             match statement {
                 Statement::Let { name, .. } => {
                     assert_eq!(expected_indents[i], name)
-                    // todo!("add expected expressions here");
+                    // TODO: add expected expressions here
                 }
                 _ => assert!(false),
             };

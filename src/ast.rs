@@ -1,5 +1,3 @@
-use crate::token::Token;
-
 /*
 * Abstract Syntax Tree
 */
