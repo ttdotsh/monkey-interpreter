@@ -127,52 +127,49 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expression, ParseError> {
-        let mut expression = self.parse_prefix_expression()?;
+        let mut expression = match &self.current_token {
+            Token::Ident(s) => Ok(Expression::Ident(s.to_owned())), // TODO: move s out of token?
+            Token::Int(s) => {
+                // TODO: move the string rather than copy?
+                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError(s.into()))?;
+                Ok(Expression::IntLiteral(int_literal))
+            }
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            _ => Err(ParseError::ExpectedExpression),
+        }?;
+
         while !self.current_token.is(&Token::Semicolon)
             && cur_precedence.value() < self.peek_token.precedence().value()
         {
             self.step();
             expression = self.parse_infix_expression(expression)?;
         }
+
         return Ok(expression);
     }
 
     fn parse_prefix_expression(&mut self) -> Result<Expression, ParseError> {
-        return match &self.current_token {
-            Token::Ident(s) => Ok(Expression::Ident(s.to_owned())),
-            Token::Int(s) => {
-                // TODO: figure out if this should move the string rather than copy
-                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError(s.into()))?;
-                Ok(Expression::IntLiteral(int_literal))
-            }
-            Token::Bang => {
-                self.step();
-                Ok(Expression::Prefix {
-                    operator: Operator::Bang,
-                    right: Box::new(self.parse_expression(Precedence::Lowest)?),
-                })
-            }
-            Token::Minus => {
-                self.step();
-                Ok(Expression::Prefix {
-                    operator: Operator::Minus,
-                    right: Box::new(self.parse_expression(Precedence::Lowest)?),
-                })
-            }
-            _ => Err(ParseError::ExpectedExpression),
-        };
+        let operator = Operator::try_from(&self.current_token)?;
+        self.step();
+
+        return Ok(Expression::Prefix {
+            operator,
+            right: Box::new(self.parse_expression(Precedence::Lowest)?),
+        });
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         let precedence = self.current_token.precedence();
         let operator = Operator::try_from(&self.current_token)?;
+
         self.step();
         let right = self.parse_expression(precedence)?;
-        Ok(Expression::Infix {
+
+        return Ok(Expression::Infix {
             left: Box::new(left),
             operator,
             right: Box::new(right),
-        })
+        });
     }
 }
 
@@ -215,6 +212,7 @@ impl TryFrom<&Token> for Operator {
             Token::Minus => Ok(Operator::Minus),
             Token::Asterisk => Ok(Operator::Multiplication),
             Token::Slash => Ok(Operator::Division),
+            Token::Bang => Ok(Operator::Bang),
             _ => Err(Self::Error::ExpectedOperator),
         }
     }
