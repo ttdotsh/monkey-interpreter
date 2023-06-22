@@ -125,6 +125,9 @@ impl Parser {
                 let int_literal = s.parse().map_err(|_| ParseError::ParseIntError(s.into()))?;
                 Ok(Expression::IntLiteral(int_literal))
             }
+            Token::True | Token::False => Ok(Expression::BooleanLiteral(
+                self.current_token.is(&Token::True),
+            )),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => Err(ParseError::ExpectedExpression),
         }?;
@@ -324,6 +327,27 @@ mod test {
 
         let expected_statement = Statement::Expression(Expression::IntLiteral(5));
         assert_eq!(expected_statement, program.statements[0]);
+    }
+
+    #[test]
+    fn test_parse_boolean_literal_expression() {
+        let test_input = r#"
+            true;
+            false;
+        "#;
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let expected_statements = vec![
+            Statement::Expression(Expression::BooleanLiteral(true)),
+            Statement::Expression(Expression::BooleanLiteral(false)),
+        ];
+
+        expected_statements
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
     }
 
     #[test]
