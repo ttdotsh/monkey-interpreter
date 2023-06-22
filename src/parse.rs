@@ -4,15 +4,6 @@ use crate::{
     token::Token,
 };
 
-#[derive(Debug, PartialEq)]
-pub enum ParseError {
-    UnexpectedToken { expected: Token, recieved: Token },
-    NoneTypeLiteral,
-    ExpectedExpression,
-    ParseIntError(String),
-    ExpectedOperator,
-}
-
 struct Parser {
     lexer: Lexer,
     current_token: Token,
@@ -185,6 +176,15 @@ enum Precedence {
     Call = 7,        // my_function(x)
 }
 
+impl Token {
+    fn precedence(&self) -> Precedence {
+        return match self {
+            Token::Asterisk | Token::Slash => Precedence::MultDiv,
+            Token::Plus | Token::Minus => Precedence::AddSub,
+            Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
+            Token::Equal | Token::NotEqual => Precedence::Equality,
+            _ => Precedence::Lowest,
+        };
     }
 }
 
@@ -207,16 +207,13 @@ impl TryFrom<&Token> for Operator {
     }
 }
 
-impl Token {
-    fn precedence(&self) -> Precedence {
-        match self {
-            Token::Asterisk | Token::Slash => Precedence::MultDiv,
-            Token::Plus | Token::Minus => Precedence::AddSub,
-            Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
-            Token::Equal | Token::NotEqual => Precedence::Equality,
-            _ => Precedence::Lowest,
-        }
-    }
+#[derive(Debug, PartialEq)]
+pub enum ParseError {
+    UnexpectedToken { expected: Token, recieved: Token },
+    NoneTypeLiteral,
+    ExpectedExpression,
+    ParseIntError(String),
+    ExpectedOperator,
 }
 
 #[cfg(test)]
@@ -375,7 +372,6 @@ mod test {
         let program = parser.parse_program();
 
         assert_eq!(program.statements.len(), 8);
-        println!("{:?}", parser.errors);
         assert_eq!(parser.errors.len(), 0);
 
         let expected_expressions = vec![
