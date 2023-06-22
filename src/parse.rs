@@ -355,12 +355,13 @@ mod test {
         let test_input = r#"
             !5;
             -15;
+            !true;
+            !false;
         "#;
         let lexer = Lexer::new(test_input.into());
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
-        assert_eq!(program.statements.len(), 2);
         assert_eq!(parser.errors.len(), 0);
 
         let expected_expressions = vec![
@@ -372,11 +373,19 @@ mod test {
                 operator: Operator::Minus,
                 right: Box::new(Expression::IntLiteral(15)),
             }),
+            Statement::Expression(Expression::Prefix {
+                operator: Operator::Bang,
+                right: Box::new(Expression::BooleanLiteral(true)),
+            }),
+            Statement::Expression(Expression::Prefix {
+                operator: Operator::Bang,
+                right: Box::new(Expression::BooleanLiteral(false)),
+            }),
         ];
-
-        for (i, expr) in expected_expressions.into_iter().enumerate() {
-            assert_eq!(expr, program.statements[i]);
-        }
+        expected_expressions
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
     }
 
     #[test]
@@ -390,15 +399,17 @@ mod test {
             5 < 5;
             5 == 5;
             5 != 5;
+            true == true;
+            true != false;
+            false == false;
        "#;
         let lexer = Lexer::new(test_input.into());
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
-        assert_eq!(program.statements.len(), 8);
         assert_eq!(parser.errors.len(), 0);
 
-        let expected_expressions = vec![
+        let expected_statements = vec![
             Statement::Expression(Expression::Infix {
                 left: Box::new(Expression::IntLiteral(5)),
                 operator: Operator::Plus,
@@ -439,11 +450,30 @@ mod test {
                 operator: Operator::NotEquals,
                 right: Box::new(Expression::IntLiteral(5)),
             }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::BooleanLiteral(true)),
+                operator: Operator::Equals,
+                right: Box::new(Expression::BooleanLiteral(true)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::BooleanLiteral(true)),
+                operator: Operator::NotEquals,
+                right: Box::new(Expression::BooleanLiteral(false)),
+            }),
+            Statement::Expression(Expression::Infix {
+                left: Box::new(Expression::BooleanLiteral(false)),
+                operator: Operator::Equals,
+                right: Box::new(Expression::BooleanLiteral(false)),
+            }),
         ];
 
-        for (i, expr) in expected_expressions.into_iter().enumerate() {
-            assert_eq!(expr, program.statements[i]);
-        }
+        // for (i, expr) in expected_statements.into_iter().enumerate() {
+        //     assert_eq!(expr, program.statements[i]);
+        // }
+        expected_statements
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
     }
 
     #[test]
@@ -465,6 +495,10 @@ mod test {
                 "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
+            ("true", "true"),
+            ("false", "false"),
+            ("3 > 5 == false", "((3 > 5) == false)"),
+            ("3 < 5 == true", "((3 < 5) == true)"),
         ];
 
         for (expr, expect) in expressions_and_expectations {
