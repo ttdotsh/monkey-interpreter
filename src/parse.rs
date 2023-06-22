@@ -139,7 +139,7 @@ impl Parser {
         }?;
 
         while !self.current_token.is(&Token::Semicolon)
-            && cur_precedence.value() < self.peek_token.precedence().value()
+            && cur_precedence < self.peek_token.precedence()
         {
             self.step();
             expression = self.parse_infix_expression(expression)?;
@@ -174,28 +174,17 @@ impl Parser {
 }
 
 #[allow(dead_code)]
+#[derive(PartialEq, PartialOrd)]
 enum Precedence {
-    Lowest,
-    Equality,    // == or !=
-    LessGreater, // < or >
-    AddSub,      // + or -
-    MultDiv,     // * or /
-    Prefix,      // -x or !x
-    Call,        // my_function(x)
+    Lowest = 1,
+    Equality = 2,    // == or !=
+    LessGreater = 3, // < or >
+    AddSub = 4,      // + or -
+    MultDiv = 5,     // * or /
+    Prefix = 6,      // -x or !x
+    Call = 7,        // my_function(x)
 }
 
-#[allow(dead_code)]
-impl Precedence {
-    fn value(&self) -> i32 {
-        match self {
-            Precedence::Lowest => 1,
-            Precedence::Equality => 2,
-            Precedence::LessGreater => 3,
-            Precedence::AddSub => 4,
-            Precedence::MultDiv => 5,
-            Precedence::Prefix => 6,
-            Precedence::Call => 7,
-        }
     }
 }
 
