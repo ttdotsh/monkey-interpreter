@@ -154,7 +154,7 @@ impl Parser {
 
         return Ok(Expression::Prefix {
             operator,
-            right: Box::new(self.parse_expression(Precedence::Lowest)?),
+            right: Box::new(self.parse_expression(Precedence::Prefix)?),
         });
     }
 
@@ -435,5 +435,42 @@ mod test {
         for (i, expr) in expected_expressions.into_iter().enumerate() {
             assert_eq!(expr, program.statements[i]);
         }
+    }
+
+    #[test]
+    fn test_operator_precedence_parsing() -> std::fmt::Result {
+        // These were copied from the book
+        let expressions_and_expectations = vec![
+            ("-a * b", "((-a) * b)"),
+            ("!-a", "(!(-a))"),
+            ("a + b + c", "((a + b) + c)"),
+            ("a + b - c", "((a + b) - c)"),
+            ("a * b * c", "((a * b) * c)"),
+            ("a * b / c", "((a * b) / c)"),
+            ("a + b / c", "(a + (b / c))"),
+            ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+            ("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"),
+            ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+            ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+            (
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            ),
+        ];
+
+        for (expr, expect) in expressions_and_expectations {
+            let lexer = Lexer::new(expr.into());
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            let ast_string = program
+                .statements
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+                .join("");
+
+            assert_eq!(ast_string, expect);
+        }
+        Ok(())
     }
 }
