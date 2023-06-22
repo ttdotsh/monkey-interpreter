@@ -129,6 +129,7 @@ impl Parser {
                 self.current_token.is(&Token::True),
             )),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::OpenParen => self.parse_grouped_expression(),
             _ => Err(ParseError::ExpectedExpression),
         }?;
 
@@ -164,6 +165,13 @@ impl Parser {
             operator,
             right: Box::new(right),
         });
+    }
+
+    fn parse_grouped_expression(&mut self) -> Result<Expression, ParseError> {
+        self.step();
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        self.expect_next(Token::CloseParen)?;
+        return Ok(expression);
     }
 }
 
@@ -364,7 +372,7 @@ mod test {
 
         assert_eq!(parser.errors.len(), 0);
 
-        let expected_expressions = vec![
+        let expected_statements = vec![
             Statement::Expression(Expression::Prefix {
                 operator: Operator::Bang,
                 right: Box::new(Expression::IntLiteral(5)),
@@ -382,7 +390,8 @@ mod test {
                 right: Box::new(Expression::BooleanLiteral(false)),
             }),
         ];
-        expected_expressions
+
+        expected_statements
             .into_iter()
             .enumerate()
             .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
@@ -499,6 +508,11 @@ mod test {
             ("false", "false"),
             ("3 > 5 == false", "((3 > 5) == false)"),
             ("3 < 5 == true", "((3 < 5) == true)"),
+            ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+            ("(5 + 5) * 2", "((5 + 5) * 2)"),
+            ("2 / (5 + 5)", "(2 / (5 + 5))"),
+            ("-(5 + 5)", "(-(5 + 5))"),
+            ("!(true == true)", "(!(true == true))"),
         ];
 
         for (expr, expect) in expressions_and_expectations {
