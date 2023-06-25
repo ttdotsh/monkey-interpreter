@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Operator, Program, Statement},
+    ast::{Block, Expression, Operator, Program, Statement},
     lex::Lexer,
     token::Token,
 };
@@ -43,7 +43,7 @@ impl Parser {
 
     fn parse_program(&mut self) -> Program {
         let mut program = Program::new();
-        while self.current_token != Token::Eof {
+        while !self.current_token.is(&Token::Eof) {
             if let Some(statement) = self.parse_statement() {
                 program.statements.push(statement);
             }
@@ -130,6 +130,7 @@ impl Parser {
             )),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::OpenParen => self.parse_grouped_expression(),
+            Token::If => self.parse_if_expression(),
             _ => Err(ParseError::ExpectedExpression),
         }?;
 
@@ -172,6 +173,43 @@ impl Parser {
         let expression = self.parse_expression(Precedence::Lowest)?;
         self.expect_next(Token::CloseParen)?;
         return Ok(expression);
+    }
+
+    fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
+        self.expect_next(Token::OpenParen)?;
+        self.step();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        self.expect_next(Token::CloseParen)?;
+        self.expect_next(Token::OpenCurly)?;
+        let consequence = self.parse_block_statement();
+
+        let alternative = if self.peek_token.is(&Token::Else) {
+            self.step();
+            self.expect_next(Token::OpenCurly)?;
+            Some(self.parse_block_statement())
+        } else {
+            None
+        };
+
+        return Ok(Expression::If {
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        });
+    }
+
+    fn parse_block_statement(&mut self) -> Block {
+        let mut statements = Vec::new();
+        self.step();
+
+        while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.step();
+        }
+
+        return Block(statements);
     }
 }
 
@@ -230,7 +268,7 @@ pub enum ParseError {
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{Expression, Operator, Statement},
+        ast::{Block, Expression, Operator, Statement},
         lex::Lexer,
         parse::{ParseError, Parser},
         token::Token,
@@ -476,9 +514,6 @@ mod test {
             }),
         ];
 
-        // for (i, expr) in expected_statements.into_iter().enumerate() {
-        //     assert_eq!(expr, program.statements[i]);
-        // }
         expected_statements
             .into_iter()
             .enumerate()
@@ -529,5 +564,48 @@ mod test {
             assert_eq!(ast_string, expect);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let test_input = r#"
+            if (x < y) { x }
+            if (x < y) { x } else { y }
+        "#;
+        let lexer = Lexer::new(test_input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let expected_statements = vec![
+            Statement::Expression(Expression::If {
+                condition: Box::new(Expression::Infix {
+                    left: Box::new(Expression::Ident(String::from("x"))),
+                    operator: Operator::LessThan,
+                    right: Box::new(Expression::Ident(String::from("y"))),
+                }),
+                consequence: Block(vec![Statement::Expression(Expression::Ident(
+                    String::from("x"),
+                ))]),
+                alternative: None,
+            }),
+            Statement::Expression(Expression::If {
+                condition: Box::new(Expression::Infix {
+                    left: Box::new(Expression::Ident(String::from("x"))),
+                    operator: Operator::LessThan,
+                    right: Box::new(Expression::Ident(String::from("y"))),
+                }),
+                consequence: Block(vec![Statement::Expression(Expression::Ident(
+                    String::from("x"),
+                ))]),
+                alternative: Some(Block(vec![Statement::Expression(Expression::Ident(
+                    String::from("y"),
+                ))])),
+            }),
+        ];
+
+        expected_statements
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
     }
 }

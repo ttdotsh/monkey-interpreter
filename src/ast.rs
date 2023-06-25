@@ -35,6 +35,22 @@ impl Display for Statement {
     }
 }
 
+// TODO: I don't like that this is randomly its own type, explore some other implementations
+#[derive(Debug, PartialEq)]
+pub struct Block(pub Vec<Statement>);
+
+impl Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = &self
+            .0
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join("; ");
+        write!(f, "{}", string)
+    }
+}
+
 /*
 * Expressions
 */
@@ -52,6 +68,11 @@ pub enum Expression {
         operator: Operator,
         right: Box<Expression>,
     },
+    If {
+        condition: Box<Expression>,
+        consequence: Block,
+        alternative: Option<Block>,
+    },
 }
 
 impl Display for Expression {
@@ -66,6 +87,17 @@ impl Display for Expression {
                 operator,
                 right,
             } => write!(f, "({} {} {})", left, operator, right),
+            Self::If {
+                condition,
+                consequence,
+                alternative,
+            } => {
+                write!(f, "if {} {}", condition, consequence)?;
+                if let Some(alt) = alternative {
+                    write!(f, " else {}", alt)?;
+                }
+                Ok(())
+            }
         }
     }
 }
