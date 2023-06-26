@@ -58,4 +58,8 @@ impl Token {
             _ => false,
         };
     }
+
+    pub fn is_ident(&self) -> bool {
+        return matches!(self, Token::Ident(_));
+    }
 }
