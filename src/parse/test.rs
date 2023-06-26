@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Block, Expression, Operator, Parameters, Statement},
+    ast::{Arguments, Block, Expression, Operator, Parameters, Statement},
     lex::Lexer,
     parse::{ParseError, Parser},
     token::Token,
@@ -16,6 +16,7 @@ fn test_parse_let_statements() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
+    assert_eq!(parser.errors.len(), 0);
     assert_eq!(program.statements.len(), 3);
 
     let expected_indents = vec![String::from("x"), String::from("y"), String::from("foobar")];
@@ -42,6 +43,7 @@ fn test_parse_return_statement() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
+    assert_eq!(parser.errors.len(), 0);
     assert_eq!(program.statements.len(), 3);
 
     for statement in program.statements {
@@ -112,6 +114,8 @@ fn test_parse_boolean_literal_expression() {
     let lexer = Lexer::new(test_input.into());
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
+
+    assert_eq!(parser.errors.len(), 0);
 
     let expected_statements = vec![
         Statement::Expression(Expression::BooleanLiteral(true)),
@@ -304,6 +308,8 @@ fn test_if_expression() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
+    assert_eq!(parser.errors.len(), 0);
+
     let expected_statements = vec![
         Statement::Expression(Expression::If {
             condition: Box::new(Expression::Infix {
@@ -348,6 +354,8 @@ fn test_parse_function_literal() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
+    assert_eq!(parser.errors.len(), 0);
+
     let expected_statements = vec![
         Statement::Expression(Expression::FuncLiteral {
             parameters: Parameters(vec![
@@ -378,7 +386,41 @@ fn test_parse_function_literal() {
         }),
     ];
 
+    expected_statements
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+}
+
+#[test]
+fn test_parse_call_expression() {
+    let test_input = r#"
+        add(1, 2 * 3, 4 + 5);
+    "#;
+    let lexer = Lexer::new(test_input.into());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
     println!("{:?}", parser.errors);
+    assert_eq!(parser.errors.len(), 0);
+
+    let expected_statements = vec![Statement::Expression(Expression::Call {
+        function: Box::new(Expression::Ident(String::from("add"))),
+        arguments: Arguments(vec![
+            Expression::IntLiteral(1),
+            Expression::Infix {
+                left: Box::new(Expression::IntLiteral(2)),
+                operator: Operator::Multiplication,
+                right: Box::new(Expression::IntLiteral(3)),
+            },
+            Expression::Infix {
+                left: Box::new(Expression::IntLiteral(4)),
+                operator: Operator::Plus,
+                right: Box::new(Expression::IntLiteral(5)),
+            },
+        ]),
+    })];
+
     expected_statements
         .into_iter()
         .enumerate()

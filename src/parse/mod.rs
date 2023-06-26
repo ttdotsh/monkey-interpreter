@@ -2,7 +2,7 @@
 mod test;
 
 use crate::{
-    ast::{Block, Expression, Operator, Parameters, Program, Statement},
+    ast::{Arguments, Block, Expression, Operator, Parameters, Program, Statement},
     lex::Lexer,
     token::Token,
 };
@@ -170,7 +170,10 @@ impl Parser {
             && cur_precedence < self.peek_token.precedence()
         {
             self.step();
-            expression = self.parse_infix_expression(expression)?;
+            expression = match self.current_token {
+                Token::OpenParen => self.parse_function_call_expression(expression),
+                _ => self.parse_infix_expression(expression),
+            }?;
         }
 
         return Ok(expression);
@@ -239,15 +242,29 @@ impl Parser {
         return Ok(Expression::FuncLiteral { parameters, body });
     }
 
+    fn parse_function_call_expression(
+        &mut self,
+        function: Expression,
+    ) -> Result<Expression, ParseError> {
+        // self.expect_next(Token::OpenParen)?;
+        let arguments = self.parse_function_call_arguments()?;
+
+        return Ok(Expression::Call {
+            function: Box::new(function),
+            arguments,
+        });
+    }
+
     fn parse_function_parameters(&mut self) -> Result<Parameters, ParseError> {
         let mut parameters = Vec::new();
-        if self.peek_token.is(&Token::CloseParen) {
+        let end_of_params = Token::CloseParen;
+        if self.peek_token.is(&end_of_params) {
             self.step();
             return Ok(Parameters(parameters));
         }
 
         self.expect_ident()?;
-        while self.current_token.is_ident() {
+        while !self.current_token.is(&end_of_params) {
             parameters.push(self.parse_expression(Precedence::Lowest)?);
             if self.peek_token.is(&Token::Comma) {
                 self.step();
@@ -258,12 +275,32 @@ impl Parser {
         }
         return Ok(Parameters(parameters));
     }
+
+    fn parse_function_call_arguments(&mut self) -> Result<Arguments, ParseError> {
+        let mut arguments = Vec::new();
+        let end_of_args = Token::CloseParen;
+        if self.peek_token.is(&end_of_args) {
+            self.step();
+            return Ok(Arguments(arguments));
+        }
+
+        self.step();
+        while !self.current_token.is(&end_of_args) {
+            arguments.push(self.parse_expression(Precedence::Lowest)?);
+            if self.peek_token.is(&Token::Comma) {
+                self.step();
+                self.step();
+            } else {
+                self.expect_next(Token::CloseParen)?;
+            }
+        }
+        return Ok(Arguments(arguments));
+    }
 }
 
 /*
 * Precedence
 */
-#[allow(dead_code)]
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest = 1,
@@ -281,6 +318,7 @@ enum Precedence {
 impl Token {
     fn precedence(&self) -> Precedence {
         return match self {
+            Token::OpenParen => Precedence::Call,
             Token::Asterisk | Token::Slash => Precedence::MultDiv,
             Token::Plus | Token::Minus => Precedence::AddSub,
             Token::LessThan | Token::GreaterThan => Precedence::LessGreater,

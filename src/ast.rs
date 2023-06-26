@@ -77,6 +77,10 @@ pub enum Expression {
         parameters: Parameters,
         body: Block,
     },
+    Call {
+        function: Box<Expression>,
+        arguments: Arguments,
+    },
 }
 
 impl Display for Expression {
@@ -105,6 +109,12 @@ impl Display for Expression {
             Self::FuncLiteral { parameters, body } => {
                 write!(f, "fn({}) {{ {} }}", parameters, body)
             }
+            Self::Call {
+                function,
+                arguments,
+            } => {
+                write!(f, "{}({})", function, arguments)
+            }
         }
     }
 }
@@ -113,6 +123,21 @@ impl Display for Expression {
 pub struct Parameters(pub Vec<Expression>);
 
 impl Display for Parameters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = self
+            .0
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        write!(f, "{}", string)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Arguments(pub Vec<Expression>);
+
+impl Display for Arguments {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
             .0
