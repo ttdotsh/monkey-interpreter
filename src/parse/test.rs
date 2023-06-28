@@ -17,19 +17,28 @@ fn test_parse_let_statements() {
     let program = parser.parse_program();
 
     assert_eq!(parser.errors.len(), 0);
-    assert_eq!(program.statements.len(), 3);
 
-    let expected_indents = vec![String::from("x"), String::from("y"), String::from("foobar")];
+    let expected_statements = vec![
+        Statement::Let {
+            name: String::from("x"),
+            value: Expression::IntLiteral(5),
+        },
+        Statement::Let {
+            name: String::from("y"),
+            value: Expression::IntLiteral(10),
+        },
+        Statement::Let {
+            name: String::from("foobar"),
+            value: Expression::IntLiteral(838383),
+        },
+    ];
 
-    for (i, statement) in program.statements.into_iter().enumerate() {
-        match statement {
-            Statement::Let { name, .. } => {
-                assert_eq!(expected_indents[i], name)
-                // TODO: add expected expressions here
-            }
-            _ => assert!(false),
-        };
-    }
+    assert_eq!(expected_statements.len(), program.statements.len());
+
+    expected_statements
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
 }
 
 #[test]
@@ -44,14 +53,19 @@ fn test_parse_return_statement() {
     let program = parser.parse_program();
 
     assert_eq!(parser.errors.len(), 0);
-    assert_eq!(program.statements.len(), 3);
 
-    for statement in program.statements {
-        match statement {
-            Statement::Return(_) => {}
-            _ => assert!(false),
-        }
-    }
+    let expected_statements = vec![
+        Statement::Return(Expression::IntLiteral(5)),
+        Statement::Return(Expression::IntLiteral(10)),
+        Statement::Return(Expression::IntLiteral(993322)),
+    ];
+
+    assert_eq!(expected_statements.len(), program.statements.len());
+
+    expected_statements
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
 }
 
 #[test]
@@ -122,6 +136,8 @@ fn test_parse_boolean_literal_expression() {
         Statement::Expression(Expression::BooleanLiteral(false)),
     ];
 
+    assert_eq!(expected_statements.len(), program.statements.len());
+
     expected_statements
         .into_iter()
         .enumerate()
@@ -160,6 +176,8 @@ fn test_parse_prefix_expression() {
             right: Box::new(Expression::BooleanLiteral(false)),
         }),
     ];
+
+    assert_eq!(expected_statements.len(), program.statements.len());
 
     expected_statements
         .into_iter()
@@ -245,6 +263,8 @@ fn test_parse_infix_expression() {
             right: Box::new(Expression::BooleanLiteral(false)),
         }),
     ];
+
+    assert_eq!(expected_statements.len(), program.statements.len());
 
     expected_statements
         .into_iter()
@@ -337,6 +357,8 @@ fn test_if_expression() {
         }),
     ];
 
+    assert_eq!(expected_statements.len(), program.statements.len());
+
     expected_statements
         .into_iter()
         .enumerate()
@@ -386,6 +408,8 @@ fn test_parse_function_literal() {
         }),
     ];
 
+    assert_eq!(expected_statements.len(), program.statements.len());
+
     expected_statements
         .into_iter()
         .enumerate()
@@ -401,7 +425,6 @@ fn test_parse_call_expression() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
-    println!("{:?}", parser.errors);
     assert_eq!(parser.errors.len(), 0);
 
     let expected_statements = vec![Statement::Expression(Expression::Call {
@@ -420,6 +443,8 @@ fn test_parse_call_expression() {
             },
         ]),
     })];
+
+    assert_eq!(expected_statements.len(), program.statements.len());
 
     expected_statements
         .into_iter()

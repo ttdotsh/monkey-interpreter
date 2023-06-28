@@ -94,8 +94,6 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Result<(String, Expression), ParseError> {
-        // let expected_ident = Token::Ident(String::from("/* Variable Name */"));
-        // self.expect_next(expected_ident)?;
         self.expect_ident()?;
         let name = match self.current_token.extract_literal() {
             Some(s) => s,
@@ -103,26 +101,27 @@ impl Parser {
         };
 
         self.expect_next(Token::Assign)?;
+        self.step();
 
-        // TODO: implement parsing expressions");
-        while self.current_token != Token::Semicolon {
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token.is(&Token::Semicolon) {
             self.step();
         }
-        let value = String::from("value");
 
-        return Ok((name, Expression::Ident(value)));
+        return Ok((name, value));
     }
 
     fn parse_return_statement(&mut self) -> Result<Expression, ParseError> {
         self.step();
 
-        // TODO: implement parsing expressions");
-        while self.current_token != Token::Semicolon {
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token.is(&Token::Semicolon) {
             self.step();
         }
-        let value = String::from("value");
 
-        return Ok(Expression::Ident(value));
+        return Ok(return_value);
     }
 
     fn parse_expression_statement(&mut self) -> Result<Expression, ParseError> {
@@ -246,7 +245,6 @@ impl Parser {
         &mut self,
         function: Expression,
     ) -> Result<Expression, ParseError> {
-        // self.expect_next(Token::OpenParen)?;
         let arguments = self.parse_function_call_arguments()?;
 
         return Ok(Expression::Call {
