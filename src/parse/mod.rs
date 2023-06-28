@@ -10,16 +10,16 @@ use crate::{
 /*
 * Parser
 */
-struct Parser {
+pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     peek_token: Token,
-    errors: Vec<ParseError>,
+    pub errors: Vec<ParseError>,
 }
 
 #[allow(dead_code)]
 impl Parser {
-    fn new(mut lexer: Lexer) -> Parser {
+    pub fn new(mut lexer: Lexer) -> Parser {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
         return Parser {
@@ -56,7 +56,7 @@ impl Parser {
         }
     }
 
-    fn parse_program(&mut self) -> Program {
+    pub fn parse_program(&mut self) -> Program {
         let mut program = Program::new();
         while !self.current_token.is(&Token::Eof) {
             if let Some(statement) = self.parse_statement() {
