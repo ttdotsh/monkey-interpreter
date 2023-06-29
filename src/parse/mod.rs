@@ -17,7 +17,6 @@ pub struct Parser {
     pub errors: Vec<ParseError>,
 }
 
-#[allow(dead_code)]
 impl Parser {
     pub fn new(mut lexer: Lexer) -> Parser {
         let current_token = lexer.next_token();
@@ -28,6 +27,17 @@ impl Parser {
             peek_token,
             errors: Vec::new(),
         };
+    }
+
+    pub fn parse_program(&mut self) -> Program {
+        let mut program = Program::new();
+        while !self.current_token.is(&Token::Eof) {
+            if let Some(statement) = self.parse_statement() {
+                program.statements.push(statement);
+            }
+            self.step();
+        }
+        return program;
     }
 
     fn step(&mut self) {
@@ -54,17 +64,6 @@ impl Parser {
         } else {
             Err(ParseError::ExpectedIdentifier)
         }
-    }
-
-    pub fn parse_program(&mut self) -> Program {
-        let mut program = Program::new();
-        while !self.current_token.is(&Token::Eof) {
-            if let Some(statement) = self.parse_statement() {
-                program.statements.push(statement);
-            }
-            self.step();
-        }
-        return program;
     }
 
     fn parse_statement(&mut self) -> Option<Statement> {
