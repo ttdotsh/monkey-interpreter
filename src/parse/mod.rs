@@ -135,8 +135,7 @@ impl Parser {
         return Ok(expression);
     }
 
-    // TODO: Error on empty block
-    fn parse_block_statement(&mut self) -> Block {
+    fn parse_block(&mut self) -> Result<Block, ParseError> {
         let mut statements = Vec::new();
         self.step();
 
@@ -221,14 +220,15 @@ impl Parser {
         self.expect_next(Token::OpenParen)?;
         self.step();
         let condition = self.parse_expression(Precedence::Lowest)?;
+
         self.expect_next(Token::CloseParen)?;
         self.expect_next(Token::OpenCurly)?;
-        let consequence = self.parse_block_statement();
+        let consequence = self.parse_block()?;
 
         let alternative = if self.peek_token.is(&Token::Else) {
             self.step();
             self.expect_next(Token::OpenCurly)?;
-            Some(self.parse_block_statement())
+            Some(self.parse_block()?)
         } else {
             None
         };
@@ -243,8 +243,9 @@ impl Parser {
     fn parse_function_literal_expression(&mut self) -> Result<Expression, ParseError> {
         self.expect_next(Token::OpenParen)?;
         let parameters = self.parse_function_parameters()?;
+
         self.expect_next(Token::OpenCurly)?;
-        let body = self.parse_block_statement();
+        let body = self.parse_block()?;
 
         return Ok(Expression::FuncLiteral { parameters, body });
     }
@@ -359,9 +360,9 @@ impl TryFrom<&Token> for Operator {
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     UnexpectedToken { expected: Token, recieved: Token },
-    NoneTypeLiteral,
     ExpectedExpression,
     ParseIntError(String),
     ExpectedOperator,
     ExpectedIdentifier,
+    ExpectedStatement,
 }

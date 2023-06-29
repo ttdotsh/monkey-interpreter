@@ -38,7 +38,6 @@ impl Display for Statement {
     }
 }
 
-// TODO: I don't like that this is randomly its own type, explore some other implementations
 #[derive(Debug, PartialEq)]
 pub struct Block(pub Vec<Statement>);
 
