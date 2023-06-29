@@ -212,6 +212,7 @@ impl Parser {
         self.step();
         let expression = self.parse_expression(Precedence::Lowest)?;
         self.expect_next(Token::CloseParen)?;
+
         return Ok(expression);
     }
 

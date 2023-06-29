@@ -86,9 +86,9 @@ fn test_let_statement_syntax_errors() {
         },
     ];
 
-    for e in expected_errors {
-        assert!(parser.errors.contains(&e));
-    }
+    expected_errors
+        .into_iter()
+        .for_each(|e| assert!(parser.errors.contains(&e)));
 }
 
 #[test]

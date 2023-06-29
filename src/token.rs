@@ -39,14 +39,6 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn extract_literal(&mut self) -> Option<String> {
-        return match self {
-            Token::Ident(s) => Some(std::mem::take(s)),
-            Token::Int(s) => Some(std::mem::take(s)),
-            _ => None,
-        };
-    }
-
     pub fn is(&self, token: &Self) -> bool {
         if self == token {
             return true;
