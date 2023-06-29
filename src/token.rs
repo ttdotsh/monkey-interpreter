@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // Identifiers and literals
     Ident(String),
@@ -36,4 +36,22 @@ pub enum Token {
 
     Illegal,
     Eof,
+}
+
+impl Token {
+    pub fn is(&self, token: &Self) -> bool {
+        if self == token {
+            return true;
+        }
+
+        return match (self, token) {
+            (Token::Ident(_), Token::Ident(_)) => true,
+            (Token::Int(_), Token::Int(_)) => true,
+            _ => false,
+        };
+    }
+
+    pub fn is_ident(&self) -> bool {
+        return matches!(self, Token::Ident(_));
+    }
 }

@@ -1,5 +1,3 @@
-use std::string::FromUtf8Error;
-
 use crate::token::Token;
 
 #[derive(Debug)]
@@ -22,7 +20,7 @@ impl Lexer {
         return lex;
     }
 
-    pub fn next_token(&mut self) -> Result<Token, FromUtf8Error> {
+    pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         let token = match self.ch {
             b',' => Token::Comma,
@@ -57,19 +55,19 @@ impl Lexer {
             b'>' => Token::GreaterThan,
 
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
-                let token_literal = self.read_identifier()?;
-                return Ok(Lexer::lookup_identifier(token_literal));
+                let token_literal = self.read_identifier();
+                return Lexer::lookup_identifier(token_literal);
             }
             b'0'..=b'9' => {
-                let token_literal = self.read_number()?;
-                return Ok(Token::Int(token_literal));
+                let token_literal = self.read_number();
+                return Token::Int(token_literal);
             }
 
             0 => Token::Eof,
             _ => Token::Illegal,
         };
         self.read_char();
-        return Ok(token);
+        return token;
     }
 
     fn read_char(&mut self) {
@@ -95,22 +93,20 @@ impl Lexer {
         return self.input[self.read_position];
     }
 
-    fn read_identifier(&mut self) -> Result<String, FromUtf8Error> {
+    fn read_identifier(&mut self) -> String {
         let pos = self.position;
         while self.ch.is_ascii_alphabetic() || self.ch == b'_' {
             self.read_char();
         }
-        let identifier = String::from_utf8(self.input[pos..self.position].into())?;
-        return Ok(identifier);
+        return String::from_utf8_lossy(&self.input[pos..self.position]).to_string();
     }
 
-    fn read_number(&mut self) -> Result<String, FromUtf8Error> {
+    fn read_number(&mut self) -> String {
         let pos = self.position;
         while self.ch.is_ascii_digit() {
             self.read_char();
         }
-        let identifier = String::from_utf8(self.input[pos..self.position].into())?;
-        return Ok(identifier);
+        return String::from_utf8_lossy(&self.input[pos..self.position]).to_string();
     }
 
     fn lookup_identifier(token_literal: String) -> Token {
@@ -128,7 +124,7 @@ impl Lexer {
 }
 
 impl Iterator for Lexer {
-    type Item = Result<Token, FromUtf8Error>;
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.ch == 0 {
@@ -142,7 +138,7 @@ impl Iterator for Lexer {
 mod test {
     use std::string::FromUtf8Error;
 
-    use crate::{lexer::Lexer, token::Token};
+    use crate::{lex::Lexer, token::Token};
 
     #[test]
     fn test_next_token() -> Result<(), FromUtf8Error> {
@@ -159,7 +155,7 @@ mod test {
         ];
         let mut lexer = Lexer::new(String::from(test_input));
         for exp_tok in expected_tokens.into_iter() {
-            let tok = lexer.next_token()?;
+            let tok = lexer.next_token();
             println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
@@ -263,7 +259,7 @@ mod test {
         ];
         let mut lexer = Lexer::new(String::from(test_input));
         for exp_tok in expected_tokens.into_iter() {
-            let tok = lexer.next_token()?;
+            let tok = lexer.next_token();
             println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
