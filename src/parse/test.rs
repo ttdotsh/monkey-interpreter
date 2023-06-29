@@ -20,15 +20,15 @@ fn test_parse_let_statements() {
 
     let expected_statements = vec![
         Statement::Let {
-            name: String::from("x"),
+            name: String::from("x").into(),
             value: Expression::IntLiteral(5),
         },
         Statement::Let {
-            name: String::from("y"),
+            name: String::from("y").into(),
             value: Expression::IntLiteral(10),
         },
         Statement::Let {
-            name: String::from("foobar"),
+            name: String::from("foobar").into(),
             value: Expression::IntLiteral(838383),
         },
     ];
@@ -101,7 +101,8 @@ fn test_parse_identifier_expression() {
     assert_eq!(parser.errors.len(), 0);
     assert_eq!(program.statements.len(), 1);
 
-    let expected_statement = Statement::Expression(Expression::Ident(String::from("foobar")));
+    let expected_statement =
+        Statement::Expression(Expression::Ident(String::from("foobar").into()));
     assert_eq!(expected_statement, program.statements[0]);
 }
 
@@ -333,26 +334,26 @@ fn test_if_expression() {
     let expected_statements = vec![
         Statement::Expression(Expression::If {
             condition: Box::new(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x"))),
+                left: Box::new(Expression::Ident(String::from("x").into())),
                 operator: Operator::LessThan,
-                right: Box::new(Expression::Ident(String::from("y"))),
+                right: Box::new(Expression::Ident(String::from("y").into())),
             }),
             consequence: Block(vec![Statement::Expression(Expression::Ident(
-                String::from("x"),
+                String::from("x").into(),
             ))]),
             alternative: None,
         }),
         Statement::Expression(Expression::If {
             condition: Box::new(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x"))),
+                left: Box::new(Expression::Ident(String::from("x").into())),
                 operator: Operator::LessThan,
-                right: Box::new(Expression::Ident(String::from("y"))),
+                right: Box::new(Expression::Ident(String::from("y").into())),
             }),
             consequence: Block(vec![Statement::Expression(Expression::Ident(
-                String::from("x"),
+                String::from("x").into(),
             ))]),
             alternative: Some(Block(vec![Statement::Expression(Expression::Ident(
-                String::from("y"),
+                String::from("y").into(),
             ))])),
         }),
     ];
@@ -381,29 +382,29 @@ fn test_parse_function_literal() {
     let expected_statements = vec![
         Statement::Expression(Expression::FuncLiteral {
             parameters: Parameters(vec![
-                Expression::Ident(String::from("x")),
-                Expression::Ident(String::from("y")),
+                Expression::Ident(String::from("x").into()),
+                Expression::Ident(String::from("y").into()),
             ]),
             body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x"))),
+                left: Box::new(Expression::Ident(String::from("x").into())),
                 operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y"))),
+                right: Box::new(Expression::Ident(String::from("y").into())),
             })]),
         }),
         Statement::Expression(Expression::FuncLiteral {
             parameters: Parameters(vec![]),
             body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x"))),
+                left: Box::new(Expression::Ident(String::from("x").into())),
                 operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y"))),
+                right: Box::new(Expression::Ident(String::from("y").into())),
             })]),
         }),
         Statement::Expression(Expression::FuncLiteral {
-            parameters: Parameters(vec![Expression::Ident(String::from("x"))]),
+            parameters: Parameters(vec![Expression::Ident(String::from("x").into())]),
             body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x"))),
+                left: Box::new(Expression::Ident(String::from("x").into())),
                 operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y"))),
+                right: Box::new(Expression::Ident(String::from("y").into())),
             })]),
         }),
     ];
@@ -428,7 +429,7 @@ fn test_parse_call_expression() {
     assert_eq!(parser.errors.len(), 0);
 
     let expected_statements = vec![Statement::Expression(Expression::Call {
-        function: Box::new(Expression::Ident(String::from("add"))),
+        function: Box::new(Expression::Ident(String::from("add").into())),
         arguments: Arguments(vec![
             Expression::IntLiteral(1),
             Expression::Infix {

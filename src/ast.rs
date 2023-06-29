@@ -20,7 +20,10 @@ impl Program {
 */
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    Let { name: String, value: Expression },
+    Let {
+        name: Indentifier,
+        value: Expression,
+    },
     Return(Expression),
     Expression(Expression),
 }
@@ -56,7 +59,7 @@ impl Display for Block {
 */
 #[derive(Debug, PartialEq)]
 pub enum Expression {
-    Ident(String),
+    Ident(Indentifier),
     IntLiteral(i64),
     BooleanLiteral(bool),
     Prefix {
@@ -86,7 +89,7 @@ pub enum Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ident(s) => write!(f, "{}", s),
+            Self::Ident(i) => write!(f, "{}", i),
             Self::IntLiteral(i) => write!(f, "{}", i),
             Self::BooleanLiteral(b) => write!(f, "{}", b),
             Self::Prefix { operator, right } => write!(f, "({}{})", operator, right),
@@ -116,6 +119,21 @@ impl Display for Expression {
                 write!(f, "{}({})", function, arguments)
             }
         }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Indentifier(String);
+
+impl Display for Indentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for Indentifier {
+    fn from(value: String) -> Self {
+        Indentifier(value)
     }
 }
 

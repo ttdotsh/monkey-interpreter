@@ -2,7 +2,7 @@
 mod test;
 
 use crate::{
-    ast::{Arguments, Block, Expression, Operator, Parameters, Program, Statement},
+    ast::{Arguments, Block, Expression, Indentifier, Operator, Parameters, Program, Statement},
     lex::Lexer,
     token::Token,
 };
@@ -93,11 +93,14 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<(String, Expression), ParseError> {
-        self.expect_ident()?;
-        let name = match self.current_token.extract_literal() {
-            Some(s) => s,
-            None => return Err(ParseError::NoneTypeLiteral), // I don't think this is possible?
+    fn parse_let_statement(&mut self) -> Result<(Indentifier, Expression), ParseError> {
+        let name = match &mut self.peek_token {
+            Token::Ident(s) => {
+                let literal = std::mem::take(s);
+                self.step();
+                literal.into()
+            }
+            _ => return Err(ParseError::ExpectedIdentifier),
         };
 
         self.expect_next(Token::Assign)?;
@@ -144,15 +147,20 @@ impl Parser {
             self.step();
         }
 
-        return Block(statements);
+        if statements.len() < 1 {
+            return Err(ParseError::ExpectedStatement);
+        }
+
+        return Ok(Block(statements));
     }
 
     fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expression, ParseError> {
-        let mut expression = match &self.current_token {
-            Token::Ident(s) => Ok(Expression::Ident(s.to_owned())), // TODO: move s out of token?
+        let mut expression = match &mut self.current_token {
+            Token::Ident(s) => Ok(Expression::Ident(std::mem::take(s).into())),
             Token::Int(s) => {
-                // TODO: move the string rather than copy?
-                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError(s.into()))?;
+                let int_literal = s
+                    .parse()
+                    .map_err(|_| ParseError::ParseIntError(std::mem::take(s)))?;
                 Ok(Expression::IntLiteral(int_literal))
             }
             Token::True | Token::False => Ok(Expression::BooleanLiteral(
