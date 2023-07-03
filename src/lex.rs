@@ -1,116 +1,134 @@
 use crate::token::Token;
 
-#[derive(Debug)]
-pub struct Lexer {
-    input: Vec<u8>,
+/*
+* Lexer
+*/
+pub struct Lexer<'a> {
+    source: &'a [u8],
     position: usize,
-    read_position: usize,
-    ch: u8,
 }
 
-impl Lexer {
-    pub fn new(input: String) -> Lexer {
-        let mut lex = Lexer {
-            input: input.into_bytes(),
+impl<'a> Lexer<'a> {
+    pub fn new(source: &'a str) -> Lexer<'a> {
+        Lexer {
+            source: source.as_bytes(),
             position: 0,
-            read_position: 0,
-            ch: 0,
-        };
-        lex.read_char();
-        return lex;
+        }
     }
+}
 
+impl Iterator for Lexer<'_> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.curr_char() {
+            Some(_) => Some(self.next_token()),
+            None => None,
+        }
+    }
+}
+
+impl Lexer<'_> {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
-        let token = match self.ch {
-            b',' => Token::Comma,
-            b';' => Token::Semicolon,
+        let token = match self.curr_char() {
+            Some(b',') => Token::Comma,
+            Some(b';') => Token::Semicolon,
+            Some(b'(') => Token::OpenParen,
+            Some(b')') => Token::CloseParen,
+            Some(b'{') => Token::OpenCurly,
+            Some(b'}') => Token::CloseCurly,
+            Some(b'+') => Token::Plus,
+            Some(b'-') => Token::Minus,
+            Some(b'*') => Token::Asterisk,
+            Some(b'/') => Token::Slash,
+            Some(b'<') => Token::LessThan,
+            Some(b'>') => Token::GreaterThan,
 
-            b'(' => Token::OpenParen,
-            b')' => Token::CloseParen,
-            b'{' => Token::OpenCurly,
-            b'}' => Token::CloseCurly,
-
-            b'=' => {
-                if self.peek_next_char() == b'=' {
-                    self.read_char();
+            Some(b'=') => match self.peek_char() {
+                Some(b'=') => {
+                    self.step();
                     Token::Equal
-                } else {
-                    Token::Assign
                 }
-            }
-            b'+' => Token::Plus,
-            b'-' => Token::Minus,
-            b'!' => {
-                if self.peek_next_char() == b'=' {
-                    self.read_char();
+                _ => Token::Assign,
+            },
+            Some(b'!') => match self.peek_char() {
+                Some(b'=') => {
+                    self.step();
                     Token::NotEqual
-                } else {
-                    Token::Bang
                 }
-            }
-            b'*' => Token::Asterisk,
-            b'/' => Token::Slash,
-            b'<' => Token::LessThan,
-            b'>' => Token::GreaterThan,
+                _ => Token::Bang,
+            },
 
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
-                let token_literal = self.read_identifier();
-                return Lexer::lookup_identifier(token_literal);
+            /* TODO: Refactor Token to take in a &[u8] instead of a String */
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => {
+                let ident_slice = self.read_identifier();
+                let token_literal = String::from_utf8_lossy(ident_slice).to_string();
+                return Token::from(token_literal);
             }
-            b'0'..=b'9' => {
-                let token_literal = self.read_number();
+            Some(b'0'..=b'9') => {
+                let num_slice = self.read_number();
+                let token_literal = String::from_utf8_lossy(num_slice).to_string();
                 return Token::Int(token_literal);
             }
 
-            0 => Token::Eof,
+            None => Token::Eof,
             _ => Token::Illegal,
         };
-        self.read_char();
-        return token;
+        self.step();
+        token
     }
 
-    fn read_char(&mut self) {
-        if self.read_position >= self.input.len() {
-            self.ch = 0;
+    fn step(&mut self) {
+        self.position += 1;
+    }
+
+    fn curr_char(&self) -> Option<&u8> {
+        if self.position >= self.source.len() {
+            None
         } else {
-            self.ch = self.input[self.read_position];
+            Some(&self.source[self.position])
         }
-        self.position = self.read_position;
-        self.read_position += 1;
+    }
+
+    fn peek_char(&self) -> Option<&u8> {
+        let peek_pos = self.position + 1;
+        if peek_pos >= self.source.len() {
+            None
+        } else {
+            Some(&self.source[peek_pos])
+        }
     }
 
     fn skip_whitespace(&mut self) {
-        while self.ch.is_ascii_whitespace() {
-            self.read_char();
+        while let Some(&b' ' | &b'\t' | &b'\n' | &b'\r') = self.curr_char() {
+            self.step();
         }
     }
 
-    fn peek_next_char(&self) -> u8 {
-        if self.read_position >= self.input.len() {
-            return 0;
-        }
-        return self.input[self.read_position];
-    }
-
-    fn read_identifier(&mut self) -> String {
+    fn read_identifier(&mut self) -> &[u8] {
         let pos = self.position;
-        while self.ch.is_ascii_alphabetic() || self.ch == b'_' {
-            self.read_char();
+        while let Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') = self.curr_char() {
+            self.step();
         }
-        return String::from_utf8_lossy(&self.input[pos..self.position]).to_string();
+        &self.source[pos..self.position]
     }
 
-    fn read_number(&mut self) -> String {
+    fn read_number(&mut self) -> &[u8] {
         let pos = self.position;
-        while self.ch.is_ascii_digit() {
-            self.read_char();
+        while let Some(b'0'..=b'9') = self.curr_char() {
+            self.step();
         }
-        return String::from_utf8_lossy(&self.input[pos..self.position]).to_string();
+        &self.source[pos..self.position]
     }
+}
 
-    fn lookup_identifier(token_literal: String) -> Token {
-        match token_literal.as_str() {
+/*
+* Token impl for Lexer
+* TODO: turn this into From<&[u8]> once Token no longer takes a String
+*/
+impl From<String> for Token {
+    fn from(value: String) -> Self {
+        match value.as_str() {
             "let" => Token::Let,
             "fn" => Token::Function,
             "if" => Token::If,
@@ -118,30 +136,17 @@ impl Lexer {
             "return" => Token::Return,
             "true" => Token::True,
             "false" => Token::False,
-            _ => Token::Ident(token_literal),
+            _ => Token::Ident(value),
         }
-    }
-}
-
-impl Iterator for Lexer {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.ch == 0 {
-            return None;
-        }
-        return Some(self.next_token());
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::string::FromUtf8Error;
-
     use crate::{lex::Lexer, token::Token};
 
     #[test]
-    fn test_next_token() -> Result<(), FromUtf8Error> {
+    fn test_next_token() {
         let test_input = "=+(){},;";
         let expected_tokens = vec![
             Token::Assign,
@@ -153,17 +158,15 @@ mod test {
             Token::Comma,
             Token::Semicolon,
         ];
-        let mut lexer = Lexer::new(String::from(test_input));
-        for exp_tok in expected_tokens.into_iter() {
+        let mut lexer = Lexer::new(test_input);
+        for exp_tok in expected_tokens {
             let tok = lexer.next_token();
-            println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
-        Ok(())
     }
 
     #[test]
-    fn test_syntax() -> Result<(), FromUtf8Error> {
+    fn test_syntax() {
         let test_input = r#"
             let five = 5;
             let ten = 10;
@@ -257,12 +260,10 @@ mod test {
             Token::Semicolon,
             Token::Eof,
         ];
-        let mut lexer = Lexer::new(String::from(test_input));
-        for exp_tok in expected_tokens.into_iter() {
+        let mut lexer = Lexer::new(test_input);
+        for exp_tok in expected_tokens {
             let tok = lexer.next_token();
-            println!("Expected token: {:?}\nRecieved token: {:?}", exp_tok, tok);
             assert_eq!(exp_tok, tok);
         }
-        Ok(())
     }
 }

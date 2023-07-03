@@ -10,14 +10,14 @@ use crate::{
 /*
 * Parser
 */
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     current_token: Token,
     peek_token: Token,
     pub errors: Vec<ParseError>,
 }
 
-impl Parser {
+impl Parser<'_> {
     pub fn new(mut lexer: Lexer) -> Parser {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
