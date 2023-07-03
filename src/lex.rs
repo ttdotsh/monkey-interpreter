@@ -59,6 +59,7 @@ impl Lexer<'_> {
                 _ => Token::Bang,
             },
 
+            /* TODO: Refactor Token to take in a &[u8] instead of a String */
             Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => {
                 let ident_slice = self.read_identifier();
                 let token_literal = String::from_utf8_lossy(ident_slice).to_string();
@@ -123,6 +124,7 @@ impl Lexer<'_> {
 
 /*
 * Token impl for Lexer
+* TODO: turn this into From<&[u8]> once Token no longer takes a String
 */
 impl From<String> for Token {
     fn from(value: String) -> Self {
