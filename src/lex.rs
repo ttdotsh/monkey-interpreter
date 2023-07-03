@@ -61,7 +61,6 @@ impl Lexer<'_> {
 
             Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => {
                 let ident_slice = self.read_identifier();
-                // return Token::from(ident_slice);
                 let token_literal = String::from_utf8_lossy(ident_slice).to_string();
                 return Token::from(token_literal);
             }

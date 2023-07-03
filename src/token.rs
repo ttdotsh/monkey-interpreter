@@ -1,10 +1,10 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    // Identifiers and literals
+    /* Identifiers and Literals */
     Ident(String),
     Int(String),
 
-    // Operators
+    /* Operators */
     Assign,
     Plus,
     Minus,
@@ -16,16 +16,15 @@ pub enum Token {
     Equal,
     NotEqual,
 
-    // Delimiters
+    /* Delimiters */
     Comma,
     Semicolon,
-
     OpenParen,
     CloseParen,
     OpenCurly,
     CloseCurly,
 
-    // Keywords
+    /* Keywords */
     Let,
     Function,
     If,
@@ -34,8 +33,9 @@ pub enum Token {
     True,
     False,
 
-    Illegal,
+    /* Endings */
     Eof,
+    Illegal,
 }
 
 impl Token {
