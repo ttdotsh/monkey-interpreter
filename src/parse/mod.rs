@@ -18,9 +18,9 @@ pub struct Parser<'a> {
 }
 
 impl Parser<'_> {
-    pub fn new(lexer: Lexer) -> Parser {
+    pub fn new(src: &str) -> Parser {
         Parser {
-            lexer,
+            lexer: Lexer::new(src),
             current_token: Default::default(),
             peek_token: Default::default(),
             errors: Vec::new(),
@@ -68,14 +68,23 @@ impl Parser<'_> {
     }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        match self.current_token {
+        let statement = match self.current_token {
             Token::Let => {
                 let (name, value) = self.parse_let_statement()?;
-                Ok(Statement::Let { name, value })
+                Statement::Let { name, value }
             }
-            Token::Return => Ok(Statement::Return(self.parse_return_statement()?)),
-            _ => Ok(Statement::Expression(self.parse_expression_statement()?)),
+            Token::Return => {
+                self.step();
+                Statement::Return(self.parse_expression(Precedence::Lowest)?)
+            }
+            _ => Statement::Expression(self.parse_expression(Precedence::Lowest)?),
+        };
+
+        if self.peek_token.is(&Token::Semicolon) {
+            self.step();
         }
+
+        Ok(statement)
     }
 
     fn parse_let_statement(&mut self) -> Result<(Indentifier, Expression), ParseError> {
@@ -93,31 +102,7 @@ impl Parser<'_> {
 
         let value = self.parse_expression(Precedence::Lowest)?;
 
-        if self.peek_token.is(&Token::Semicolon) {
-            self.step();
-        }
-
         Ok((name, value))
-    }
-
-    fn parse_return_statement(&mut self) -> Result<Expression, ParseError> {
-        self.step();
-
-        let return_value = self.parse_expression(Precedence::Lowest)?;
-
-        if self.peek_token.is(&Token::Semicolon) {
-            self.step();
-        }
-
-        Ok(return_value)
-    }
-
-    fn parse_expression_statement(&mut self) -> Result<Expression, ParseError> {
-        let expression = self.parse_expression(Precedence::Lowest)?;
-        if self.peek_token.is(&Token::Semicolon) {
-            self.step();
-        }
-        Ok(expression)
     }
 
     fn parse_block(&mut self) -> Result<Block, ParseError> {
@@ -254,7 +239,6 @@ impl Parser<'_> {
         let end_of_params = Token::CloseParen;
         if self.peek_token.is(&end_of_params) {
             self.step();
-            Ok(Parameters(parameters))
         } else {
             self.expect_ident()?;
             while !self.current_token.is(&end_of_params) {
@@ -266,8 +250,8 @@ impl Parser<'_> {
                     self.expect_next(Token::CloseParen)?;
                 }
             }
-            Ok(Parameters(parameters))
         }
+        Ok(Parameters(parameters))
     }
 
     fn parse_function_call_arguments(&mut self) -> Result<Arguments, ParseError> {
