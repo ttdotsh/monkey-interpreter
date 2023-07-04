@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    ops::{Deref, DerefMut},
-};
+use std::{fmt::Display, ops::Deref};
 
 /*
 * Abstract Syntax Tree
@@ -19,23 +16,11 @@ impl From<Vec<Statement>> for Ast {
     }
 }
 
-// impl Ast {
-//     pub fn new() -> Ast {
-//         Ast(Vec::new())
-//     }
-// }
-
 impl Deref for Ast {
     type Target = Vec<Statement>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl DerefMut for Ast {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
