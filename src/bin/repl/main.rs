@@ -56,12 +56,11 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             src => {
                 let lexer = Lexer::new(src.into());
                 let mut parser = Parser::new(lexer);
-                let program = parser.parse_program();
+                let program = parser.parse();
 
                 if parser.errors.is_empty() {
                     program
-                        .statements
-                        .into_iter()
+                        .iter()
                         .try_for_each(|s| writeln!(&mut writer, "{}", s))?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;
