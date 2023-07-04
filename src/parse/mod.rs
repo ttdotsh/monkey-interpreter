@@ -144,7 +144,7 @@ impl Parser<'_> {
         }?;
 
         while !self.current_token.is(&Token::Semicolon)
-            && cur_precedence < self.peek_token.precedence()
+            && cur_precedence < Precedence::from(&self.peek_token)
         {
             self.step();
             expression = match self.current_token {
@@ -167,11 +167,11 @@ impl Parser<'_> {
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
-        let precedence = self.current_token.precedence();
         let operator = Operator::try_from(&self.current_token)?;
+        let prec = Precedence::from(&self.current_token);
 
         self.step();
-        let right = self.parse_expression(precedence)?;
+        let right = self.parse_expression(prec)?;
 
         Ok(Expression::Infix {
             left: Box::new(left),
@@ -286,11 +286,11 @@ enum Precedence {
 }
 
 /*
-* Token impls for Parser
+* Mapping Precedence and Operators to Tokens
 */
-impl Token {
-    fn precedence(&self) -> Precedence {
-        match self {
+impl From<&Token> for Precedence {
+    fn from(value: &Token) -> Self {
+        match value {
             Token::OpenParen => Precedence::Call,
             Token::Asterisk | Token::Slash => Precedence::MultDiv,
             Token::Plus | Token::Minus => Precedence::AddSub,
