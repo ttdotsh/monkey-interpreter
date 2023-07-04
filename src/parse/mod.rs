@@ -208,7 +208,7 @@ impl Parser<'_> {
 
     fn parse_function_literal_expression(&mut self) -> Result<Expression, ParseError> {
         self.expect_next(Token::OpenParen)?;
-        let parameters = self.parse_function_parameters()?;
+        let parameters = self.parse_function_params()?;
 
         self.expect_next(Token::OpenCurly)?;
         let body = self.parse_block();
@@ -220,23 +220,21 @@ impl Parser<'_> {
         &mut self,
         function: Expression,
     ) -> Result<Expression, ParseError> {
-        let arguments = self.parse_function_call_arguments()?;
-
         Ok(Expression::Call {
             function: Box::new(function),
-            arguments,
+            arguments: self.parse_function_args()?,
         })
     }
 
-    fn parse_function_parameters(&mut self) -> Result<Parameters, ParseError> {
-        let mut parameters = Vec::new();
+    fn parse_function_params(&mut self) -> Result<Parameters, ParseError> {
+        let mut params = Vec::new();
         let end_of_params = Token::CloseParen;
         if self.peek_token.is(&end_of_params) {
             self.step();
         } else {
             self.expect_ident()?;
             while !self.current_token.is(&end_of_params) {
-                parameters.push(self.parse_expression(Precedence::Lowest)?);
+                params.push(self.parse_expression(Precedence::Lowest)?);
                 if self.peek_token.is(&Token::Comma) {
                     self.step();
                     self.expect_ident()?;
@@ -245,10 +243,10 @@ impl Parser<'_> {
                 }
             }
         }
-        Ok(Parameters(parameters))
+        Ok(Parameters(params))
     }
 
-    fn parse_function_call_arguments(&mut self) -> Result<Arguments, ParseError> {
+    fn parse_function_args(&mut self) -> Result<Arguments, ParseError> {
         let mut args = Vec::new();
         let end_of_args = Token::CloseParen;
         self.step();
