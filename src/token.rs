@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub enum Token {
     /* Identifiers and Literals */
     Ident(String),
@@ -34,6 +34,7 @@ pub enum Token {
     False,
 
     /* Endings */
+    #[default]
     Eof,
     Illegal,
 }

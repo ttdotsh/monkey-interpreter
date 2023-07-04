@@ -1,17 +1,26 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Deref};
 
 /*
 * Abstract Syntax Tree
 */
-pub struct Program {
-    pub statements: Vec<Statement>,
+
+/*
+* TODO: Explore the idea of generalizing this data structure with generics
+* Ast, Block, Arguments and Parameters are all very similar implementations
+*/
+pub struct Ast(Vec<Statement>);
+
+impl From<Vec<Statement>> for Ast {
+    fn from(value: Vec<Statement>) -> Self {
+        Ast(value)
+    }
 }
 
-impl Program {
-    pub fn new() -> Program {
-        return Program {
-            statements: Vec::new(),
-        };
+impl Deref for Ast {
+    type Target = Vec<Statement>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
