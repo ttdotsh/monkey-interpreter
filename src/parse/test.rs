@@ -1,22 +1,27 @@
 use crate::{
-    ast::{Arguments, Block, Expression, Operator, Parameters, Statement},
+    ast::{Arguments, Ast, Block, Expression, Operator, Parameters, Statement},
     lex::Lexer,
     parse::{ParseError, Parser},
     token::Token,
 };
 
+fn test(src: &str) -> (Ast, Vec<ParseError>) {
+    let lexer = Lexer::new(src);
+    let mut parser = Parser::new(lexer);
+    (parser.parse(), parser.errors)
+}
+
 #[test]
 fn test_parse_let_statements() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             let x = 5;
             let y = 10;
             let foobar = 838383;
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Let {
@@ -33,26 +38,25 @@ fn test_parse_let_statements() {
         },
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_parse_return_statement() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             return 5;
             return 10;
             return 993322;
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Return(Expression::IntLiteral(5)),
@@ -60,23 +64,22 @@ fn test_parse_return_statement() {
         Statement::Return(Expression::IntLiteral(993322)),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_let_statement_syntax_errors() {
-    let test_input = r#"
+    let (_, errors) = test(
+        r#"
             let = 5;
             let y y 10;
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let _program = parser.parse_program();
+        "#,
+    );
 
     let expected_errors = vec![
         ParseError::ExpectedIdentifier,
@@ -88,76 +91,68 @@ fn test_let_statement_syntax_errors() {
 
     expected_errors
         .into_iter()
-        .for_each(|e| assert!(parser.errors.contains(&e)));
+        .for_each(|e| assert!(errors.contains(&e)));
 }
 
 #[test]
 fn test_parse_identifier_expression() {
-    let test_input = "foobar;";
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+    let (program, errors) = test("foobar;");
 
-    assert_eq!(parser.errors.len(), 0);
-    assert_eq!(program.statements.len(), 1);
+    assert!(errors.is_empty());
+    assert_eq!(program.len(), 1);
 
     let expected_statement =
         Statement::Expression(Expression::Ident(String::from("foobar").into()));
-    assert_eq!(expected_statement, program.statements[0]);
+    assert_eq!(expected_statement, program[0]);
 }
 
 #[test]
 fn test_parse_int_literal_expression() {
-    let test_input = "5;";
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+    let (program, errors) = test("5;");
 
-    assert_eq!(parser.errors.len(), 0);
-    assert_eq!(program.statements.len(), 1);
+    assert!(errors.is_empty());
+    assert_eq!(program.len(), 1);
 
     let expected_statement = Statement::Expression(Expression::IntLiteral(5));
-    assert_eq!(expected_statement, program.statements[0]);
+    assert_eq!(expected_statement, program[0]);
 }
 
 #[test]
 fn test_parse_boolean_literal_expression() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             true;
             false;
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Expression(Expression::BooleanLiteral(true)),
         Statement::Expression(Expression::BooleanLiteral(false)),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_parse_prefix_expression() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             !5;
             -15;
             !true;
             !false;
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Expression(Expression::Prefix {
@@ -178,17 +173,18 @@ fn test_parse_prefix_expression() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_parse_infix_expression() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             5 + 5;
             5 - 5;
             5 * 5;
@@ -200,12 +196,10 @@ fn test_parse_infix_expression() {
             true == true;
             true != false;
             false == false;
-       "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+       "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Expression(Expression::Infix {
@@ -265,12 +259,12 @@ fn test_parse_infix_expression() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
@@ -304,12 +298,9 @@ fn test_operator_precedence_parsing() -> std::fmt::Result {
     ];
 
     for (expr, expect) in expressions_and_expectations {
-        let lexer = Lexer::new(expr.into());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
+        let (program, _errors) = test(expr);
         let ast_string = program
-            .statements
-            .into_iter()
+            .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
             .join("");
@@ -321,15 +312,14 @@ fn test_operator_precedence_parsing() -> std::fmt::Result {
 
 #[test]
 fn test_if_expression() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             if (x < y) { x }
             if (x < y) { x } else { y }
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Expression(Expression::If {
@@ -358,26 +348,25 @@ fn test_if_expression() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_parse_function_literal() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
             fn(x, y) { x + y; }
             fn() { x + y; }
             fn(x) { x + y; }
-        "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+        "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![
         Statement::Expression(Expression::FuncLiteral {
@@ -409,24 +398,23 @@ fn test_parse_function_literal() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
 
 #[test]
 fn test_parse_call_expression() {
-    let test_input = r#"
+    let (program, errors) = test(
+        r#"
         add(1, 2 * 3, 4 + 5);
-    "#;
-    let lexer = Lexer::new(test_input.into());
-    let mut parser = Parser::new(lexer);
-    let program = parser.parse_program();
+    "#,
+    );
 
-    assert_eq!(parser.errors.len(), 0);
+    assert!(errors.is_empty());
 
     let expected_statements = vec![Statement::Expression(Expression::Call {
         function: Box::new(Expression::Ident(String::from("add").into())),
@@ -445,10 +433,10 @@ fn test_parse_call_expression() {
         ]),
     })];
 
-    assert_eq!(expected_statements.len(), program.statements.len());
+    assert_eq!(expected_statements.len(), program.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program.statements[i]));
+        .for_each(|(i, s)| assert_eq!(s, program[i]));
 }
