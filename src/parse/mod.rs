@@ -105,10 +105,9 @@ impl Parser<'_> {
         Ok((name, value))
     }
 
-    fn parse_block(&mut self) -> Result<Block, ParseError> {
+    fn parse_block(&mut self) -> Block {
         let mut statements = Vec::new();
         self.step();
-
         while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
@@ -116,12 +115,7 @@ impl Parser<'_> {
             }
             self.step();
         }
-
-        if statements.is_empty() {
-            Err(ParseError::ExpectedStatement)
-        } else {
-            Ok(Block(statements))
-        }
+        Block(statements)
     }
 
     fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expression, ParseError> {
@@ -195,12 +189,12 @@ impl Parser<'_> {
 
         self.expect_next(Token::CloseParen)?;
         self.expect_next(Token::OpenCurly)?;
-        let consequence = self.parse_block()?;
+        let consequence = self.parse_block();
 
         let alternative = if self.peek_token.is(&Token::Else) {
             self.step();
             self.expect_next(Token::OpenCurly)?;
-            Some(self.parse_block()?)
+            Some(self.parse_block())
         } else {
             None
         };
@@ -217,7 +211,7 @@ impl Parser<'_> {
         let parameters = self.parse_function_parameters()?;
 
         self.expect_next(Token::OpenCurly)?;
-        let body = self.parse_block()?;
+        let body = self.parse_block();
 
         Ok(Expression::FuncLiteral { parameters, body })
     }
@@ -330,5 +324,4 @@ pub enum ParseError {
     ParseIntError(String),
     ExpectedOperator,
     ExpectedIdentifier,
-    ExpectedStatement,
 }
