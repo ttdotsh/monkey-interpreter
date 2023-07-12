@@ -7,13 +7,15 @@ use crate::ast::{Ast, Block, Expr, Operator, Stmt};
 * Evaluation functions for different Node types
 */
 #[allow(unused)]
-pub fn eval(ast: &Ast) -> Object {
-    let mut obj = Object::Null;
-    ast.iter().for_each(|s| obj = eval_statement(s));
-    obj
+pub fn eval(mut ast: Ast) -> Object {
+    match ast.len() {
+        0 => Object::Null,
+        1 => eval_statement(ast.remove(0)),
+        _ => todo!(),
+    }
 }
 
-fn eval_statement(stmt: &Stmt) -> Object {
+fn eval_statement(stmt: Stmt) -> Object {
     match stmt {
         Stmt::Let { .. } => todo!(),
         Stmt::Return(expr) => eval_expression(expr),
@@ -21,24 +23,17 @@ fn eval_statement(stmt: &Stmt) -> Object {
     }
 }
 
-fn eval_expression(expr: &Expr) -> Object {
+fn eval_expression(expr: Expr) -> Object {
     match expr {
-        Expr::IntLiteral(i) => Object::Integer(*i),
-        Expr::BooleanLiteral(b) => Object::Boolean(*b),
-        Expr::Prefix(op, right) => eval_prefix_expression(op, right),
-        Expr::Infix(left, op, right) => eval_infix_expression(left, op, right),
+        Expr::IntLiteral(i) => Object::Integer(i),
+        Expr::BooleanLiteral(b) => Object::Boolean(b),
+        Expr::Prefix(op, right) => eval_prefix_expression(op, *right),
+        Expr::Infix(left, op, right) => eval_infix_expression(*left, op, *right),
         Expr::If {
             condition,
             consequence,
             alternative,
-        } => {
-            let alt = if let Some(b) = alternative {
-                Some(b)
-            } else {
-                None
-            };
-            eval_if_expr(condition, consequence, alt)
-        }
+        } => eval_if_expr(*condition, consequence, alternative),
         _ => todo!(),
     }
 }
@@ -46,7 +41,7 @@ fn eval_expression(expr: &Expr) -> Object {
 /*
 * Prefix Expressions
 */
-fn eval_prefix_expression(op: &Operator, right: &Expr) -> Object {
+fn eval_prefix_expression(op: Operator, right: Expr) -> Object {
     let operand = eval_expression(right);
     match op {
         Operator::Bang => eval_bang_prefix(operand),
@@ -73,7 +68,7 @@ fn eval_minus_prefix(value: Object) -> Object {
 /*
 * Infix Expressions
 */
-fn eval_infix_expression(left: &Expr, op: &Operator, right: &Expr) -> Object {
+fn eval_infix_expression(left: Expr, op: Operator, right: Expr) -> Object {
     match op {
         Operator::Plus => eval_plus_infix(eval_expression(left), eval_expression(right)),
         Operator::Minus => eval_minus_infix(eval_expression(left), eval_expression(right)),
@@ -148,15 +143,13 @@ fn eval_not_equal_infix(left: Object, right: Object) -> Object {
 /*
 * If Expressions
 */
-fn eval_if_expr(cond: &Expr, consequence: &Block, alt: Option<&Block>) -> Object {
+fn eval_if_expr(cond: Expr, consequence: Block, alt: Option<Block>) -> Object {
     if eval_expression(cond).is_truthy() {
         eval(consequence)
+    } else if let Some(b) = alt {
+        eval(b)
     } else {
-        if let Some(b) = alt {
-            eval(b)
-        } else {
-            Object::Null
-        }
+        Object::Null
     }
 }
 
@@ -168,7 +161,7 @@ mod test {
     fn test(src: &str) -> Object {
         let mut parser = Parser::new(src);
         let program = parser.parse();
-        eval(&program)
+        eval(program)
     }
 
     #[test]

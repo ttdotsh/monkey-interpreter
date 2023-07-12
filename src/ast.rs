@@ -1,10 +1,13 @@
-use std::{fmt::Display, ops::Deref};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
 /*
 * Abstract Syntax Tree
 */
 #[derive(Debug, PartialEq)]
-pub struct Ast(pub Vec<Stmt>);
+pub struct Ast(Vec<Stmt>);
 
 impl From<Vec<Stmt>> for Ast {
     fn from(value: Vec<Stmt>) -> Self {
@@ -20,7 +23,7 @@ impl Deref for Ast {
     }
 }
 
-impl std::ops::DerefMut for Ast {
+impl DerefMut for Ast {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

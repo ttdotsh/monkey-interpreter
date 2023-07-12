@@ -59,7 +59,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
                 let program = parser.parse();
 
                 if parser.errors.is_empty() {
-                    let evaluated = eval(&program);
+                    let evaluated = eval(program);
                     writeln!(writer, "{}", evaluated)?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;
