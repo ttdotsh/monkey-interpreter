@@ -19,26 +19,27 @@ pub struct Parser<'a> {
 
 impl Parser<'_> {
     pub fn new(src: &str) -> Parser {
-        Parser {
+        let mut parser = Parser {
             lexer: Lexer::new(src),
             current_token: Default::default(),
             peek_token: Default::default(),
             errors: Vec::new(),
-        }
+        };
+        parser.step();
+        parser
     }
 
     pub fn parse(&mut self) -> Ast {
-        let mut program = Vec::new();
+        let mut statements = Vec::new();
         self.step();
-        self.step();
-        while !self.current_token.is(&Token::Eof) {
+        while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
             match self.parse_statement() {
-                Ok(s) => program.push(s),
+                Ok(stmt) => statements.push(stmt),
                 Err(e) => self.errors.push(e),
             }
             self.step();
         }
-        Ast::from(program)
+        Ast::from(statements)
     }
 
     fn step(&mut self) {
@@ -103,19 +104,6 @@ impl Parser<'_> {
         let value = self.parse_expression(Precedence::Lowest)?;
 
         Ok((name, value))
-    }
-
-    fn parse_block(&mut self) -> Block {
-        let mut statements = Vec::new();
-        self.step();
-        while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
-            match self.parse_statement() {
-                Ok(stmt) => statements.push(stmt),
-                Err(e) => self.errors.push(e),
-            }
-            self.step();
-        }
-        Block(statements)
     }
 
     fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expr, ParseError> {
