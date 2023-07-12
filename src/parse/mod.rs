@@ -52,10 +52,7 @@ impl Parser<'_> {
             self.step();
             Ok(())
         } else {
-            Err(ParseError::UnexpectedToken {
-                expected: expected_token,
-                recieved: self.peek_token.to_owned(),
-            })
+            Err(ParseError::UnexpectedToken)
         }
     }
 
@@ -110,9 +107,7 @@ impl Parser<'_> {
         let mut expression = match &mut self.current_token {
             Token::Ident(s) => Ok(Expr::Ident(std::mem::take(s))),
             Token::Int(s) => {
-                let int_literal = s
-                    .parse()
-                    .map_err(|_| ParseError::ParseIntError(std::mem::take(s)))?;
+                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError)?;
                 Ok(Expr::IntLiteral(int_literal))
             }
             Token::True | Token::False => {
@@ -298,9 +293,9 @@ impl TryFrom<&Token> for Operator {
 */
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
-    UnexpectedToken { expected: Token, recieved: Token },
+    UnexpectedToken,
     ExpectedExpression,
-    ParseIntError(String),
+    ParseIntError,
     ExpectedOperator,
     ExpectedIdentifier,
 }

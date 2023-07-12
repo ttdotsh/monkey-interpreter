@@ -1,7 +1,6 @@
 use crate::{
     ast::{Args, Ast, Block, Expr, Operator, Params, Stmt},
     parse::{ParseError, Parser},
-    token::Token,
 };
 
 fn test(src: &str) -> (Ast, Vec<ParseError>) {
@@ -79,13 +78,7 @@ fn test_let_statement_syntax_errors() {
         "#,
     );
 
-    let expected_errors = vec![
-        ParseError::ExpectedIdentifier,
-        ParseError::UnexpectedToken {
-            expected: Token::Assign,
-            recieved: Token::Ident(String::from("y")),
-        },
-    ];
+    let expected_errors = vec![ParseError::ExpectedIdentifier, ParseError::UnexpectedToken];
 
     expected_errors
         .into_iter()
