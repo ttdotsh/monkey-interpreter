@@ -4,23 +4,24 @@ use crate::token::Token;
 * Lexer
 */
 pub struct Lexer<'l> {
-    source: &'l [u8],
+    src: &'l [u8],
     position: usize,
+    ch: Option<u8>,
 }
 
 impl<'l> Lexer<'l> {
-    pub fn new(source: &'l str) -> Lexer<'l> {
+    pub fn new(source_code: &'l str) -> Lexer<'l> {
+        let src = source_code.as_bytes();
         Lexer {
-            source: source.as_bytes(),
+            src,
             position: 0,
+            ch: Some(src[0]),
         }
     }
-}
 
-impl<'l> Lexer<'l> {
     pub fn next_token(&mut self) -> Token<'l> {
         self.skip_whitespace();
-        let token: Token<'l> = match self.curr_char() {
+        let token = match self.ch {
             Some(b',') => Token::Comma,
             Some(b';') => Token::Semicolon,
             Some(b'(') => Token::OpenParen,
@@ -65,45 +66,55 @@ impl<'l> Lexer<'l> {
 
     fn step(&mut self) {
         self.position += 1;
-    }
-
-    fn curr_char(&self) -> Option<&u8> {
-        if self.position >= self.source.len() {
-            None
+        if self.position >= self.src.len() {
+            self.ch = None;
         } else {
-            Some(&self.source[self.position])
+            self.ch = Some(self.src[self.position])
         }
     }
 
-    fn peek(&self) -> Option<&u8> {
+    fn peek(&self) -> Option<u8> {
         let peek_pos = self.position + 1;
-        if peek_pos >= self.source.len() {
+        if peek_pos >= self.src.len() {
             None
         } else {
-            Some(&self.source[peek_pos])
+            Some(self.src[peek_pos])
         }
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(&b' ' | &b'\t' | &b'\n' | &b'\r') = self.curr_char() {
-            self.step();
+        loop {
+            match self.ch {
+                Some(b' ' | b'\t' | b'\n' | b'\r') => self.step(),
+                _ => break,
+            }
         }
     }
 
-    fn read_identifier(&mut self) -> &'l [u8] {
+    fn read_ident(&mut self) -> &'l str {
         let pos = self.position;
-        while let Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') = self.curr_char() {
-            self.step();
+        loop {
+            match self.ch {
+                Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => self.step(),
+                _ => break,
+            }
         }
-        &self.source[pos..self.position]
+        let slice = &self.src[pos..self.position];
+        let literal = unsafe { std::str::from_utf8_unchecked(slice) };
+        literal
     }
 
-    fn read_number(&mut self) -> &'l [u8] {
+    fn read_num(&mut self) -> &'l str {
         let pos = self.position;
-        while let Some(b'0'..=b'9') = self.curr_char() {
-            self.step();
+        loop {
+            match self.ch {
+                Some(b'0'..=b'9') => self.step(),
+                _ => break,
+            }
         }
-        &self.source[pos..self.position]
+        let slice = &self.src[pos..self.position];
+        let literal = unsafe { std::str::from_utf8_unchecked(slice) };
+        literal
     }
 }
 
