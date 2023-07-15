@@ -10,17 +10,17 @@ use crate::{
 /*
 * Parser
 */
-pub struct Parser<'a> {
-    lexer: Lexer<'a>,
-    current_token: Token,
-    peek_token: Token,
+pub struct Parser<'p, 'l: 'p> {
+    lexer: &'p mut Lexer<'l>,
+    current_token: Token<'l>,
+    peek_token: Token<'l>,
     pub errors: Vec<ParseError>,
 }
 
-impl Parser<'_> {
-    pub fn new(src: &str) -> Parser {
+impl<'p, 'l> Parser<'p, 'l> {
+    pub fn new(lexer: &'p mut Lexer<'l>) -> Parser<'p, 'l> {
         let mut parser = Parser {
-            lexer: Lexer::new(src),
+            lexer,
             current_token: Default::default(),
             peek_token: Default::default(),
             errors: Vec::new(),
@@ -28,7 +28,9 @@ impl Parser<'_> {
         parser.step();
         parser
     }
+}
 
+impl Parser<'_, '_> {
     pub fn parse(&mut self) -> Ast {
         let mut statements = Vec::new();
         self.step();
@@ -86,14 +88,8 @@ impl Parser<'_> {
     }
 
     fn parse_let_statement(&mut self) -> Result<(String, Expr), ParseError> {
-        let name = match &mut self.peek_token {
-            Token::Ident(s) => {
-                let literal = std::mem::take(s);
-                self.step();
-                Ok(literal)
-            }
-            _ => Err(ParseError::ExpectedIdentifier),
-        }?;
+        self.expect_ident()?;
+        let name = String::from(self.current_token.literal());
 
         self.expect_next(Token::Assign)?;
         self.step();
@@ -104,11 +100,11 @@ impl Parser<'_> {
     }
 
     fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expr, ParseError> {
-        let mut expression = match &mut self.current_token {
-            Token::Ident(s) => Ok(Expr::Ident(std::mem::take(s))),
+        let mut expression = match self.current_token {
+            Token::Ident(s) => Ok(Expr::Ident(String::from(s))),
             Token::Int(s) => {
-                let int_literal = s.parse().map_err(|_| ParseError::ParseIntError)?;
-                Ok(Expr::IntLiteral(int_literal))
+                let int_val = s.parse().map_err(|_| ParseError::ParseIntError)?;
+                Ok(Expr::IntLiteral(int_val))
             }
             Token::True | Token::False => {
                 Ok(Expr::BooleanLiteral(self.current_token.is(&Token::True)))
@@ -256,7 +252,7 @@ enum Precedence {
 /*
 * Mapping Precedence and Operators to Tokens
 */
-impl From<&Token> for Precedence {
+impl From<&Token<'_>> for Precedence {
     fn from(value: &Token) -> Self {
         match value {
             Token::OpenParen => Precedence::Call,
@@ -269,7 +265,7 @@ impl From<&Token> for Precedence {
     }
 }
 
-impl TryFrom<&Token> for Operator {
+impl TryFrom<&Token<'_>> for Operator {
     type Error = ParseError;
 
     fn try_from(value: &Token) -> Result<Self, Self::Error> {

@@ -1,8 +1,10 @@
 #[derive(Debug, Default, PartialEq, Clone)]
-pub enum Token {
+pub enum Token<'a> {
     /* Identifiers and Literals */
-    Ident(String),
-    Int(String),
+    // Ident(String),
+    // Int(String),
+    Ident(&'a str),
+    Int(&'a str),
 
     /* Operators */
     Assign,
@@ -39,7 +41,7 @@ pub enum Token {
     Illegal,
 }
 
-impl Token {
+impl Token<'_> {
     pub fn is(&self, token: &Self) -> bool {
         if self == token {
             return true;
@@ -54,5 +56,34 @@ impl Token {
 
     pub fn is_ident(&self) -> bool {
         return matches!(self, Token::Ident(_));
+    }
+
+    pub fn literal(&self) -> &str {
+        match *self {
+            Token::Ident(s) | Token::Int(s) => s,
+            _ => todo!(),
+        }
+    }
+}
+
+impl<'s> From<&'s [u8]> for Token<'s> {
+    fn from(value: &'s [u8]) -> Self {
+        match value {
+            b"let" => Token::Let,
+            b"fn" => Token::Function,
+            b"if" => Token::If,
+            b"else" => Token::Else,
+            b"return" => Token::Return,
+            b"true" => Token::True,
+            b"false" => Token::False,
+            num_slice if value[0].is_ascii_digit() => {
+                let literal = std::str::from_utf8(num_slice).unwrap();
+                Token::Int(literal)
+            }
+            _ => {
+                let literal = std::str::from_utf8(value).unwrap();
+                Token::Ident(literal)
+            }
+        }
     }
 }

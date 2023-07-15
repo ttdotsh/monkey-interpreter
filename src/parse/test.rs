@@ -1,10 +1,12 @@
 use crate::{
     ast::{Args, Ast, Block, Expr, Operator, Params, Stmt},
+    lex::Lexer,
     parse::{ParseError, Parser},
 };
 
 fn test(src: &str) -> (Ast, Vec<ParseError>) {
-    let mut parser = Parser::new(src);
+    let mut lex = Lexer::new(src);
+    let mut parser = Parser::new(&mut lex);
     (parser.parse(), parser.errors)
 }
 

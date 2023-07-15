@@ -3,13 +3,13 @@ use crate::token::Token;
 /*
 * Lexer
 */
-pub struct Lexer<'a> {
-    source: &'a [u8],
+pub struct Lexer<'l> {
+    source: &'l [u8],
     position: usize,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str) -> Lexer<'a> {
+impl<'l> Lexer<'l> {
+    pub fn new(source: &'l str) -> Lexer<'l> {
         Lexer {
             source: source.as_bytes(),
             position: 0,
@@ -17,20 +17,10 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl Iterator for Lexer<'_> {
-    type Item = Token;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.curr_char() {
-            Some(_) => Some(self.next_token()),
-            None => None,
-        }
-    }
-}
-
-impl Lexer<'_> {
-    pub fn next_token(&mut self) -> Token {
+impl<'l> Lexer<'l> {
+    pub fn next_token(&mut self) -> Token<'l> {
         self.skip_whitespace();
-        let token = match self.curr_char() {
+        let token: Token<'l> = match self.curr_char() {
             Some(b',') => Token::Comma,
             Some(b';') => Token::Semicolon,
             Some(b'(') => Token::OpenParen,
@@ -44,14 +34,14 @@ impl Lexer<'_> {
             Some(b'<') => Token::LessThan,
             Some(b'>') => Token::GreaterThan,
 
-            Some(b'=') => match self.peek_char() {
+            Some(b'=') => match self.peek() {
                 Some(b'=') => {
                     self.step();
                     Token::Equal
                 }
                 _ => Token::Assign,
             },
-            Some(b'!') => match self.peek_char() {
+            Some(b'!') => match self.peek() {
                 Some(b'=') => {
                     self.step();
                     Token::NotEqual
@@ -59,17 +49,12 @@ impl Lexer<'_> {
                 _ => Token::Bang,
             },
 
-            /* TODO: Refactor Token to take in a &[u8] instead of a String */
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => {
-                let ident_slice = self.read_identifier();
-                let token_literal = String::from_utf8_lossy(ident_slice).to_string();
-                return Token::from(token_literal);
-            }
-            Some(b'0'..=b'9') => {
-                let num_slice = self.read_number();
-                let token_literal = String::from_utf8_lossy(num_slice).to_string();
-                return Token::Int(token_literal);
-            }
+            /*
+             * Early return here because these two methods advance the lexer past the last
+             * character in the token, so we want to skip the next call to `self.step()`
+             */
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => return Token::from(self.read_identifier()),
+            Some(b'0'..=b'9') => return Token::from(self.read_number()),
 
             None => Token::Eof,
             _ => Token::Illegal,
@@ -90,7 +75,7 @@ impl Lexer<'_> {
         }
     }
 
-    fn peek_char(&self) -> Option<&u8> {
+    fn peek(&self) -> Option<&u8> {
         let peek_pos = self.position + 1;
         if peek_pos >= self.source.len() {
             None
@@ -105,7 +90,7 @@ impl Lexer<'_> {
         }
     }
 
-    fn read_identifier(&mut self) -> &[u8] {
+    fn read_identifier(&mut self) -> &'l [u8] {
         let pos = self.position;
         while let Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') = self.curr_char() {
             self.step();
@@ -113,31 +98,12 @@ impl Lexer<'_> {
         &self.source[pos..self.position]
     }
 
-    fn read_number(&mut self) -> &[u8] {
+    fn read_number(&mut self) -> &'l [u8] {
         let pos = self.position;
         while let Some(b'0'..=b'9') = self.curr_char() {
             self.step();
         }
         &self.source[pos..self.position]
-    }
-}
-
-/*
-* Token impl for Lexer
-* TODO: turn this into From<&[u8]> once Token no longer takes a String
-*/
-impl From<String> for Token {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "let" => Token::Let,
-            "fn" => Token::Function,
-            "if" => Token::If,
-            "else" => Token::Else,
-            "return" => Token::Return,
-            "true" => Token::True,
-            "false" => Token::False,
-            _ => Token::Ident(value),
-        }
     }
 }
 
@@ -186,58 +152,58 @@ mod test {
         "#;
         let expected_tokens = vec![
             Token::Let,
-            Token::Ident(String::from("five")),
+            Token::Ident("five".into()),
             Token::Assign,
-            Token::Int(String::from("5")),
+            Token::Int("5".into()),
             Token::Semicolon,
             Token::Let,
-            Token::Ident(String::from("ten")),
+            Token::Ident("ten".into()),
             Token::Assign,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::Semicolon,
             Token::Let,
-            Token::Ident(String::from("add")),
+            Token::Ident("add".into()),
             Token::Assign,
             Token::Function,
             Token::OpenParen,
-            Token::Ident(String::from("x")),
+            Token::Ident("x".into()),
             Token::Comma,
-            Token::Ident(String::from("y")),
+            Token::Ident("y".into()),
             Token::CloseParen,
             Token::OpenCurly,
-            Token::Ident(String::from("x")),
+            Token::Ident("x".into()),
             Token::Plus,
-            Token::Ident(String::from("y")),
+            Token::Ident("y".into()),
             Token::Semicolon,
             Token::CloseCurly,
             Token::Semicolon,
             Token::Let,
-            Token::Ident(String::from("result")),
+            Token::Ident("result".into()),
             Token::Assign,
-            Token::Ident(String::from("add")),
+            Token::Ident("add".into()),
             Token::OpenParen,
-            Token::Ident(String::from("five")),
+            Token::Ident("five".into()),
             Token::Comma,
-            Token::Ident(String::from("ten")),
+            Token::Ident("ten".into()),
             Token::CloseParen,
             Token::Semicolon,
             Token::Bang,
             Token::Minus,
             Token::Slash,
             Token::Asterisk,
-            Token::Int(String::from("5")),
+            Token::Int("5".into()),
             Token::Semicolon,
-            Token::Int(String::from("5")),
+            Token::Int("5".into()),
             Token::LessThan,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::GreaterThan,
-            Token::Int(String::from("5")),
+            Token::Int("5".into()),
             Token::Semicolon,
             Token::If,
             Token::OpenParen,
-            Token::Int(String::from("5")),
+            Token::Int("5".into()),
             Token::LessThan,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::CloseParen,
             Token::OpenCurly,
             Token::Return,
@@ -250,13 +216,13 @@ mod test {
             Token::False,
             Token::Semicolon,
             Token::CloseCurly,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::Equal,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::Semicolon,
-            Token::Int(String::from("10")),
+            Token::Int("10".into()),
             Token::NotEqual,
-            Token::Int(String::from("9")),
+            Token::Int("9".into()),
             Token::Semicolon,
             Token::Eof,
         ];
