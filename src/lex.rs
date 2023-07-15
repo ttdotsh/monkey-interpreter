@@ -50,12 +50,12 @@ impl<'l> Lexer<'l> {
                 _ => Token::Bang,
             },
 
-            /*
-             * Early return here because these two methods advance the lexer past the last
-             * character in the token, so we want to skip the next call to `self.step()`
-             */
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => return Token::from(self.read_identifier()),
-            Some(b'0'..=b'9') => return Token::from(self.read_number()),
+            Some(b'0'..=b'9') => {
+                return Token::from(self.read_num());
+            }
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_') => {
+                return Token::from(self.read_ident());
+            }
 
             None => Token::Eof,
             _ => Token::Illegal,

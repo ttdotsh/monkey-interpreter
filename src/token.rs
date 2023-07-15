@@ -62,24 +62,18 @@ impl Token<'_> {
     }
 }
 
-impl<'s> From<&'s [u8]> for Token<'s> {
-    fn from(value: &'s [u8]) -> Self {
+impl<'t> From<&'t str> for Token<'t> {
+    fn from(value: &'t str) -> Self {
         match value {
-            b"let" => Token::Let,
-            b"fn" => Token::Function,
-            b"if" => Token::If,
-            b"else" => Token::Else,
-            b"return" => Token::Return,
-            b"true" => Token::True,
-            b"false" => Token::False,
-            num_slice if value[0].is_ascii_digit() => {
-                let literal = std::str::from_utf8(num_slice).unwrap();
-                Token::Int(literal)
-            }
-            _ => {
-                let literal = std::str::from_utf8(value).unwrap();
-                Token::Ident(literal)
-            }
+            "let" => Token::Let,
+            "fn" => Token::Function,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "return" => Token::Return,
+            "true" => Token::True,
+            "false" => Token::False,
+            _ if value.chars().all(|c| c.is_ascii_digit()) => Token::Int(value),
+            _ => Token::Ident(value),
         }
     }
 }
