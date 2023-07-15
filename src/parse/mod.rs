@@ -10,17 +10,17 @@ use crate::{
 /*
 * Parser
 */
-pub struct Parser<'p, 'l: 'p> {
-    lexer: &'p mut Lexer<'l>,
-    current_token: Token<'l>,
-    peek_token: Token<'l>,
+pub struct Parser<'p> {
+    lexer: Lexer<'p>,
+    current_token: Token<'p>,
+    peek_token: Token<'p>,
     pub errors: Vec<ParseError>,
 }
 
-impl<'p, 'l> Parser<'p, 'l> {
-    pub fn new(lexer: &'p mut Lexer<'l>) -> Parser<'p, 'l> {
+impl<'p> Parser<'p> {
+    pub fn new<'s: 'p>(src: &'s str) -> Parser<'p> {
         let mut parser = Parser {
-            lexer,
+            lexer: Lexer::new(src),
             current_token: Default::default(),
             peek_token: Default::default(),
             errors: Vec::new(),
@@ -30,7 +30,7 @@ impl<'p, 'l> Parser<'p, 'l> {
     }
 }
 
-impl Parser<'_, '_> {
+impl Parser<'_> {
     pub fn parse(&mut self) -> Ast {
         let mut statements = Vec::new();
         self.step();
