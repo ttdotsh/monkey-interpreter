@@ -59,11 +59,12 @@ impl Parser<'_> {
     }
 
     fn expect_ident(&mut self) -> Result<(), ParseError> {
-        if self.peek_token.is_ident() {
-            self.step();
-            Ok(())
-        } else {
-            Err(ParseError::ExpectedIdentifier)
+        match self.peek_token {
+            Token::Ident(_) => {
+                self.step();
+                Ok(())
+            }
+            _ => Err(ParseError::ExpectedIdentifier),
         }
     }
 

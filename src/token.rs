@@ -54,10 +54,6 @@ impl Token<'_> {
         };
     }
 
-    pub fn is_ident(&self) -> bool {
-        return matches!(self, Token::Ident(_));
-    }
-
     pub fn literal(&self) -> &str {
         match *self {
             Token::Ident(s) | Token::Int(s) => s,
