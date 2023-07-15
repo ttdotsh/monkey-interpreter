@@ -1,8 +1,6 @@
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq)]
 pub enum Token<'a> {
     /* Identifiers and Literals */
-    // Ident(String),
-    // Int(String),
     Ident(&'a str),
     Int(&'a str),
 

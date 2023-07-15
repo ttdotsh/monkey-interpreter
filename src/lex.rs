@@ -1,8 +1,5 @@
 use crate::token::Token;
 
-/*
-* Lexer
-*/
 pub struct Lexer<'l> {
     src: &'l [u8],
     position: usize,
