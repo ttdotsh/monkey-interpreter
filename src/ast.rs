@@ -1,13 +1,10 @@
-use std::{
-    fmt::Display,
-    ops::{Deref, DerefMut},
-};
+use std::fmt::Display;
 
 /*
 * Abstract Syntax Tree
 */
 #[derive(Debug, PartialEq)]
-pub struct Ast(Vec<Stmt>);
+pub struct Ast(pub Vec<Stmt>);
 
 impl From<Vec<Stmt>> for Ast {
     fn from(value: Vec<Stmt>) -> Self {
@@ -15,23 +12,10 @@ impl From<Vec<Stmt>> for Ast {
     }
 }
 
-impl Deref for Ast {
-    type Target = Vec<Stmt>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Ast {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl Display for Ast {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
+            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
@@ -125,17 +109,10 @@ impl From<Vec<Expr>> for ExpressionList {
     }
 }
 
-impl Deref for ExpressionList {
-    type Target = Vec<Expr>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl Display for ExpressionList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
+            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()

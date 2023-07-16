@@ -35,12 +35,12 @@ fn test_parse_let_statements() {
         },
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -61,12 +61,12 @@ fn test_parse_return_statement() {
         Stmt::Return(Expr::IntLiteral(993322)),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -90,10 +90,10 @@ fn test_parse_identifier_expression() {
     let (program, errors) = test("foobar;");
 
     assert!(errors.is_empty());
-    assert_eq!(program.len(), 1);
+    assert_eq!(program.0.len(), 1);
 
     let expected_statement = Stmt::Expression(Expr::Ident(String::from("foobar")));
-    assert_eq!(expected_statement, program[0]);
+    assert_eq!(expected_statement, program.0[0]);
 }
 
 #[test]
@@ -101,10 +101,10 @@ fn test_parse_int_literal_expression() {
     let (program, errors) = test("5;");
 
     assert!(errors.is_empty());
-    assert_eq!(program.len(), 1);
+    assert_eq!(program.0.len(), 1);
 
     let expected_statement = Stmt::Expression(Expr::IntLiteral(5));
-    assert_eq!(expected_statement, program[0]);
+    assert_eq!(expected_statement, program.0[0]);
 }
 
 #[test]
@@ -123,12 +123,12 @@ fn test_parse_boolean_literal_expression() {
         Stmt::Expression(Expr::BooleanLiteral(false)),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -160,12 +160,12 @@ fn test_parse_prefix_expression() {
         )),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -246,12 +246,12 @@ fn test_parse_infix_expression() {
         )),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -286,6 +286,7 @@ fn test_operator_precedence_parsing() -> std::fmt::Result {
     for (expr, expect) in expressions_and_expectations {
         let (program, _errors) = test(expr);
         let ast_string = program
+            .0
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
@@ -330,12 +331,12 @@ fn test_if_expression() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -380,12 +381,12 @@ fn test_parse_function_literal() {
         }),
     ];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
 
 #[test]
@@ -415,10 +416,10 @@ fn test_parse_call_expression() {
         ]),
     })];
 
-    assert_eq!(expected_statements.len(), program.len());
+    assert_eq!(expected_statements.len(), program.0.len());
 
     expected_statements
         .into_iter()
         .enumerate()
-        .for_each(|(i, s)| assert_eq!(s, program[i]));
+        .for_each(|(i, s)| assert_eq!(s, program.0[i]));
 }
