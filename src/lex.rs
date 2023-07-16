@@ -133,10 +133,9 @@ mod test {
             Token::Semicolon,
         ];
         let mut lexer = Lexer::new(test_input);
-        for exp_tok in expected_tokens {
-            let tok = lexer.next_token();
-            assert_eq!(exp_tok, tok);
-        }
+        expected_tokens
+            .into_iter()
+            .for_each(|t| assert_eq!(t, lexer.next_token()));
     }
 
     #[test]
@@ -235,9 +234,8 @@ mod test {
             Token::Eof,
         ];
         let mut lexer = Lexer::new(test_input);
-        for exp_tok in expected_tokens {
-            let tok = lexer.next_token();
-            assert_eq!(exp_tok, tok);
-        }
+        expected_tokens
+            .into_iter()
+            .for_each(|t| assert_eq!(t, lexer.next_token()));
     }
 }
