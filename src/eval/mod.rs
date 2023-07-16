@@ -1,7 +1,7 @@
 mod object;
 
 use self::object::Object;
-use crate::ast::{Ast, Block, Expr, Operator, Stmt};
+use crate::ast::{Ast, Expr, Operator, Stmt};
 
 /*
 * Evaluation functions for different Node types
@@ -29,11 +29,7 @@ fn eval_expression(expr: Expr) -> Object {
         Expr::BooleanLiteral(b) => Object::Boolean(b),
         Expr::Prefix(op, right) => eval_prefix_expression(op, *right),
         Expr::Infix(left, op, right) => eval_infix_expression(*left, op, *right),
-        Expr::If {
-            condition,
-            consequence,
-            alternative,
-        } => eval_if_expr(*condition, consequence, alternative),
+        Expr::If { check, block, alt } => eval_if_expr(*check, block, alt),
         _ => todo!(),
     }
 }
@@ -143,7 +139,7 @@ fn eval_not_equal_infix(left: Object, right: Object) -> Object {
 /*
 * If Expressions
 */
-fn eval_if_expr(cond: Expr, consequence: Block, alt: Option<Block>) -> Object {
+fn eval_if_expr(cond: Expr, consequence: Ast, alt: Option<Ast>) -> Object {
     if eval_expression(cond).is_truthy() {
         eval(consequence)
     } else if let Some(b) = alt {
