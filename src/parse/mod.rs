@@ -12,8 +12,8 @@ use crate::{
 */
 pub struct Parser<'p> {
     lexer: Lexer<'p>,
-    current_token: Token<'p>,
-    peek_token: Token<'p>,
+    curr_token: Token<'p>,
+    next_token: Token<'p>,
     pub errors: Vec<ParseError>,
 }
 
@@ -21,8 +21,8 @@ impl<'p> Parser<'p> {
     pub fn new<'s: 'p>(src: &'s str) -> Parser<'p> {
         let mut parser = Parser {
             lexer: Lexer::new(src),
-            current_token: Default::default(),
-            peek_token: Default::default(),
+            curr_token: Default::default(),
+            next_token: Default::default(),
             errors: Vec::new(),
         };
         parser.step();
@@ -34,8 +34,8 @@ impl Parser<'_> {
     pub fn parse(&mut self) -> Ast {
         let mut statements = Vec::new();
         self.step();
-        while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
-            match self.parse_statement() {
+        while !self.curr_token.is(&Token::CloseCurly) && !self.curr_token.is(&Token::Eof) {
+            match self.parse_stmt() {
                 Ok(stmt) => statements.push(stmt),
                 Err(e) => self.errors.push(e),
             }
@@ -45,12 +45,12 @@ impl Parser<'_> {
     }
 
     fn step(&mut self) {
-        self.current_token = std::mem::take(&mut self.peek_token);
-        self.peek_token = self.lexer.next_token();
+        self.curr_token = std::mem::take(&mut self.next_token);
+        self.next_token = self.lexer.next_token();
     }
 
     fn expect_next(&mut self, expected_token: Token) -> Result<(), ParseError> {
-        if self.peek_token.is(&expected_token) {
+        if self.next_token.is(&expected_token) {
             self.step();
             Ok(())
         } else {
@@ -59,7 +59,7 @@ impl Parser<'_> {
     }
 
     fn expect_ident(&mut self) -> Result<(), ParseError> {
-        match self.peek_token {
+        match self.next_token {
             Token::Ident(_) => {
                 self.step();
                 Ok(())
@@ -68,106 +68,104 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_statement(&mut self) -> Result<Stmt, ParseError> {
-        let statement = match self.current_token {
+    fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
+        let statement = match self.curr_token {
             Token::Let => {
-                let (ident, val) = self.parse_let_statement()?;
+                let (ident, val) = self.parse_let_stmt()?;
                 Stmt::Let { ident, val }
             }
             Token::Return => {
                 self.step();
-                Stmt::Return(self.parse_expression(Precedence::Lowest)?)
+                Stmt::Return(self.parse_expr(Precedence::Lowest)?)
             }
-            _ => Stmt::Expression(self.parse_expression(Precedence::Lowest)?),
+            _ => Stmt::Expression(self.parse_expr(Precedence::Lowest)?),
         };
 
-        if self.peek_token.is(&Token::Semicolon) {
+        if self.next_token.is(&Token::Semicolon) {
             self.step();
         }
 
         Ok(statement)
     }
 
-    fn parse_let_statement(&mut self) -> Result<(String, Expr), ParseError> {
+    fn parse_let_stmt(&mut self) -> Result<(String, Expr), ParseError> {
         self.expect_ident()?;
-        let name = String::from(self.current_token.literal());
+        let name = String::from(self.curr_token.literal());
 
         self.expect_next(Token::Assign)?;
         self.step();
 
-        let value = self.parse_expression(Precedence::Lowest)?;
+        let value = self.parse_expr(Precedence::Lowest)?;
 
         Ok((name, value))
     }
 
-    fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expr, ParseError> {
-        let mut expression = match self.current_token {
+    fn parse_expr(&mut self, prec: Precedence) -> Result<Expr, ParseError> {
+        let mut expression = match self.curr_token {
             Token::Ident(s) => Ok(Expr::Ident(String::from(s))),
             Token::Int(s) => {
                 let int_val = s.parse().map_err(|_| ParseError::ParseIntError)?;
                 Ok(Expr::IntLiteral(int_val))
             }
             Token::True | Token::False => {
-                Ok(Expr::BooleanLiteral(self.current_token.is(&Token::True)))
+                Ok(Expr::BooleanLiteral(self.curr_token.is(&Token::True)))
             }
-            Token::Bang | Token::Minus => self.parse_prefix_expression(),
-            Token::OpenParen => self.parse_grouped_expression(),
-            Token::If => self.parse_if_expression(),
-            Token::Function => self.parse_function_literal_expression(),
+            Token::Bang | Token::Minus => self.parse_prefix_expr(),
+            Token::OpenParen => self.parse_grouped_expr(),
+            Token::If => self.parse_if_expr(),
+            Token::Function => self.parse_func_literal_expr(),
             _ => Err(ParseError::ExpectedExpression),
         }?;
 
-        while !self.current_token.is(&Token::Semicolon)
-            && cur_precedence < Precedence::from(&self.peek_token)
-        {
+        while !self.curr_token.is(&Token::Semicolon) && prec < Precedence::from(&self.next_token) {
             self.step();
-            expression = match self.current_token {
-                Token::OpenParen => self.parse_function_call_expression(expression),
-                _ => self.parse_infix_expression(expression),
+            expression = match self.curr_token {
+                Token::OpenParen => self.parse_func_call_expr(expression),
+                _ => self.parse_infix_expr(expression),
             }?;
         }
 
         Ok(expression)
     }
 
-    fn parse_prefix_expression(&mut self) -> Result<Expr, ParseError> {
-        let operator = Operator::try_from(&self.current_token)?;
+    fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
+        let operator = Operator::try_from(&self.curr_token)?;
         self.step();
 
         Ok(Expr::Prefix(
             operator,
-            Box::new(self.parse_expression(Precedence::Prefix)?),
+            Box::new(self.parse_expr(Precedence::Prefix)?),
         ))
     }
 
-    fn parse_infix_expression(&mut self, left: Expr) -> Result<Expr, ParseError> {
-        let operator = Operator::try_from(&self.current_token)?;
-        let prec = Precedence::from(&self.current_token);
+    fn parse_infix_expr(&mut self, left: Expr) -> Result<Expr, ParseError> {
+        let operator = Operator::try_from(&self.curr_token)?;
+        let prec = Precedence::from(&self.curr_token);
 
         self.step();
-        let right = self.parse_expression(prec)?;
+        let right = self.parse_expr(prec)?;
 
         Ok(Expr::Infix(Box::new(left), operator, Box::new(right)))
     }
 
-    fn parse_grouped_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_grouped_expr(&mut self) -> Result<Expr, ParseError> {
         self.step();
-        let expression = self.parse_expression(Precedence::Lowest)?;
+        let expression = self.parse_expr(Precedence::Lowest)?;
         self.expect_next(Token::CloseParen)?;
 
         Ok(expression)
     }
 
-    fn parse_if_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_if_expr(&mut self) -> Result<Expr, ParseError> {
         self.expect_next(Token::OpenParen)?;
         self.step();
-        let condition = self.parse_expression(Precedence::Lowest)?;
+        let condition = self.parse_expr(Precedence::Lowest)?;
 
         self.expect_next(Token::CloseParen)?;
         self.expect_next(Token::OpenCurly)?;
         let consequence = self.parse();
 
-        let alternative = if self.peek_token.is(&Token::Else) {
+        let alternative = if self.next_token.is(&Token::Else) {
             self.step();
             self.expect_next(Token::OpenCurly)?;
             Some(self.parse())
@@ -182,9 +180,9 @@ impl Parser<'_> {
         })
     }
 
-    fn parse_function_literal_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_func_literal_expr(&mut self) -> Result<Expr, ParseError> {
         self.expect_next(Token::OpenParen)?;
-        let parameters = self.parse_function_params()?;
+        let parameters = self.parse_func_params()?;
 
         self.expect_next(Token::OpenCurly)?;
         let body = self.parse();
@@ -192,23 +190,23 @@ impl Parser<'_> {
         Ok(Expr::FuncLiteral { parameters, body })
     }
 
-    fn parse_function_call_expression(&mut self, function: Expr) -> Result<Expr, ParseError> {
+    fn parse_func_call_expr(&mut self, function: Expr) -> Result<Expr, ParseError> {
         Ok(Expr::Call {
             func_name: Box::new(function),
-            arguments: self.parse_function_args()?,
+            arguments: self.parse_func_args()?,
         })
     }
 
-    fn parse_function_params(&mut self) -> Result<Params, ParseError> {
+    fn parse_func_params(&mut self) -> Result<Params, ParseError> {
         let mut params = Vec::new();
         let end_of_params = Token::CloseParen;
-        if self.peek_token.is(&end_of_params) {
+        if self.next_token.is(&end_of_params) {
             self.step();
         } else {
             self.expect_ident()?;
-            while !self.current_token.is(&end_of_params) {
-                params.push(self.parse_expression(Precedence::Lowest)?);
-                if self.peek_token.is(&Token::Comma) {
+            while !self.curr_token.is(&end_of_params) {
+                params.push(self.parse_expr(Precedence::Lowest)?);
+                if self.next_token.is(&Token::Comma) {
                     self.step();
                     self.expect_ident()?;
                 } else {
@@ -219,15 +217,15 @@ impl Parser<'_> {
         Ok(Params::from(params))
     }
 
-    fn parse_function_args(&mut self) -> Result<Args, ParseError> {
+    fn parse_func_args(&mut self) -> Result<Args, ParseError> {
         let mut args = Vec::new();
         let end_of_args = Token::CloseParen;
         self.step();
-        while !self.current_token.is(&end_of_args) {
-            args.push(self.parse_expression(Precedence::Lowest)?);
-            if self.peek_token.is(&Token::Comma) {
+        while !self.curr_token.is(&end_of_args) {
+            args.push(self.parse_expr(Precedence::Lowest)?);
+            if self.next_token.is(&Token::Comma) {
                 self.step();
-                self.step();
+                self.step(); // step past the comma, to the start of the next expression
             } else {
                 self.expect_next(Token::CloseParen)?;
             }

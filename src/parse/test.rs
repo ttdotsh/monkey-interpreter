@@ -4,7 +4,6 @@ use crate::{
 };
 
 fn test(src: &str) -> (Ast, Vec<ParseError>) {
-    // let lex = Lexer::new(src);
     let mut parser = Parser::new(src);
     (parser.parse(), parser.errors)
 }
