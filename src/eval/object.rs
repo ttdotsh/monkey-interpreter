@@ -3,8 +3,11 @@ use std::fmt::Display;
 #[allow(unused)]
 #[derive(Debug, PartialEq)]
 pub enum Object {
+    /* Types */
     Integer(i32),
     Boolean(bool),
+
+    ReturnValue(Box<Object>),
     Null,
 }
 
@@ -13,6 +16,7 @@ impl Display for Object {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Boolean(b) => write!(f, "{}", b),
+            Object::ReturnValue(v) => write!(f, "{}", v),
             Object::Null => write!(f, "null"),
         }
     }

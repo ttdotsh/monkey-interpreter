@@ -1,24 +1,41 @@
 mod object;
 
-use self::object::Object;
 use crate::ast::{Ast, Expr, Operator, Stmt};
+use object::Object;
 
 /*
 * Evaluation functions for different Node types
 */
 #[allow(unused)]
-pub fn eval(mut ast: Ast) -> Object {
-    match ast.len() {
-        0 => Object::Null,
-        1 => eval_statement(ast.remove(0)),
-        _ => todo!(),
+pub fn eval_program(ast: Ast) -> Object {
+    let mut obj = Object::Null;
+    for stmt in ast.0 {
+        obj = eval_statement(stmt);
+        if let Object::ReturnValue(o) = obj {
+            return *o;
+        }
     }
+    obj
+}
+
+fn eval_block(ast: Ast) -> Object {
+    let mut obj = Object::Null;
+    for stmt in ast.0 {
+        obj = eval_statement(stmt);
+        if let Object::ReturnValue(_) = obj {
+            return obj;
+        }
+    }
+    obj
 }
 
 fn eval_statement(stmt: Stmt) -> Object {
     match stmt {
         Stmt::Let { .. } => todo!(),
-        Stmt::Return(expr) => eval_expression(expr),
+        Stmt::Return(expr) => {
+            let obj = eval_expression(expr);
+            Object::ReturnValue(Box::new(obj))
+        }
         Stmt::Expression(expr) => eval_expression(expr),
     }
 }
@@ -141,9 +158,9 @@ fn eval_not_equal_infix(left: Object, right: Object) -> Object {
 */
 fn eval_if_expr(cond: Expr, consequence: Ast, alt: Option<Ast>) -> Object {
     if eval_expression(cond).is_truthy() {
-        eval(consequence)
+        eval_block(consequence)
     } else if let Some(b) = alt {
-        eval(b)
+        eval_block(b)
     } else {
         Object::Null
     }
@@ -151,13 +168,13 @@ fn eval_if_expr(cond: Expr, consequence: Ast, alt: Option<Ast>) -> Object {
 
 #[cfg(test)]
 mod test {
-    use super::{eval, object::Object};
+    use super::{eval_program, object::Object};
     use crate::parse::Parser;
 
     fn test(src: &str) -> Object {
         let mut parser = Parser::new(src);
         let program = parser.parse();
-        eval(program)
+        eval_program(program)
     }
 
     #[test]
@@ -238,6 +255,30 @@ mod test {
             ("if (1 > 2) { 10 }", Object::Null),
             ("if (1 > 2) { 10 } else { 20 }", Object::Integer(20)),
             ("if (1 < 2) { 10 } else { 20 }", Object::Integer(10)),
+        ];
+        input_and_expected
+            .into_iter()
+            .for_each(|(i, e)| assert_eq!(test(i), e))
+    }
+
+    #[test]
+    fn test_eval_return_stmt() {
+        let input_and_expected = vec![
+            ("return 10;", Object::Integer(10)),
+            ("return 10; 9;", Object::Integer(10)),
+            ("return 2 * 5; 9;", Object::Integer(10)),
+            ("9; return 2 * 5; 9;", Object::Integer(10)),
+            (
+                r#"
+                if (10 > 1) {
+                    if (10 > 1) {
+                        return 10;
+                    }
+                    return 1; 
+                }
+                "#,
+                Object::Integer(10),
+            ),
         ];
         input_and_expected
             .into_iter()
