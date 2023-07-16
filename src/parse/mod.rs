@@ -163,9 +163,9 @@ impl Parser<'_> {
 
         self.expect_next(Token::CloseParen)?;
         self.expect_next(Token::OpenCurly)?;
-        let consequence = self.parse();
+        let block = self.parse();
 
-        let alternative = if self.next_token.is(&Token::Else) {
+        let alt = if self.next_token.is(&Token::Else) {
             self.step();
             self.expect_next(Token::OpenCurly)?;
             Some(self.parse())
@@ -174,26 +174,26 @@ impl Parser<'_> {
         };
 
         Ok(Expr::If {
-            condition: Box::new(condition),
-            consequence,
-            alternative,
+            check: Box::new(condition),
+            block,
+            alt,
         })
     }
 
     fn parse_func_literal_expr(&mut self) -> Result<Expr, ParseError> {
         self.expect_next(Token::OpenParen)?;
-        let parameters = self.parse_func_params()?;
+        let params = self.parse_func_params()?;
 
         self.expect_next(Token::OpenCurly)?;
         let body = self.parse();
 
-        Ok(Expr::FuncLiteral { parameters, body })
+        Ok(Expr::FuncLiteral { params, body })
     }
 
     fn parse_func_call_expr(&mut self, function: Expr) -> Result<Expr, ParseError> {
         Ok(Expr::Call {
             func_name: Box::new(function),
-            arguments: self.parse_func_args()?,
+            args: self.parse_func_args()?,
         })
     }
 

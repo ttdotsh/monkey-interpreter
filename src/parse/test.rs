@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Args, Ast, Block, Expr, Operator, Params, Stmt},
+    ast::{Args, Ast, Expr, Operator, Params, Stmt},
     parse::{ParseError, Parser},
 };
 
@@ -22,15 +22,15 @@ fn test_parse_let_statements() {
 
     let expected_statements = vec![
         Stmt::Let {
-            ident: String::from("x").into(),
+            ident: String::from("x"),
             val: Expr::IntLiteral(5),
         },
         Stmt::Let {
-            ident: String::from("y").into(),
+            ident: String::from("y"),
             val: Expr::IntLiteral(10),
         },
         Stmt::Let {
-            ident: String::from("foobar").into(),
+            ident: String::from("foobar"),
             val: Expr::IntLiteral(838383),
         },
     ];
@@ -309,27 +309,23 @@ fn test_if_expression() {
 
     let expected_statements = vec![
         Stmt::Expression(Expr::If {
-            condition: Box::new(Expr::Infix(
+            check: Box::new(Expr::Infix(
                 Box::new(Expr::Ident(String::from("x"))),
                 Operator::LessThan,
                 Box::new(Expr::Ident(String::from("y"))),
             )),
-            consequence: Block::from(vec![Stmt::Expression(Expr::Ident(
-                String::from("x").into(),
-            ))]),
-            alternative: None,
+            block: Ast::from(vec![Stmt::Expression(Expr::Ident(String::from("x")))]),
+            alt: None,
         }),
         Stmt::Expression(Expr::If {
-            condition: Box::new(Expr::Infix(
+            check: Box::new(Expr::Infix(
                 Box::new(Expr::Ident(String::from("x"))),
                 Operator::LessThan,
                 Box::new(Expr::Ident(String::from("y"))),
             )),
-            consequence: Block::from(vec![Stmt::Expression(Expr::Ident(
-                String::from("x").into(),
-            ))]),
-            alternative: Some(Block::from(vec![Stmt::Expression(Expr::Ident(
-                String::from("y").into(),
+            block: Ast::from(vec![Stmt::Expression(Expr::Ident(String::from("x")))]),
+            alt: Some(Ast::from(vec![Stmt::Expression(Expr::Ident(
+                String::from("y"),
             ))])),
         }),
     ];
@@ -356,27 +352,27 @@ fn test_parse_function_literal() {
 
     let expected_statements = vec![
         Stmt::Expression(Expr::FuncLiteral {
-            parameters: Params::from(vec![
-                Expr::Ident(String::from("x").into()),
-                Expr::Ident(String::from("y").into()),
+            params: Params::from(vec![
+                Expr::Ident(String::from("x")),
+                Expr::Ident(String::from("y")),
             ]),
-            body: Block::from(vec![Stmt::Expression(Expr::Infix(
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
                 Box::new(Expr::Ident(String::from("x"))),
                 Operator::Plus,
                 Box::new(Expr::Ident(String::from("y"))),
             ))]),
         }),
         Stmt::Expression(Expr::FuncLiteral {
-            parameters: Params::from(vec![]),
-            body: Block::from(vec![Stmt::Expression(Expr::Infix(
+            params: Params::from(vec![]),
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
                 Box::new(Expr::Ident(String::from("x"))),
                 Operator::Plus,
                 Box::new(Expr::Ident(String::from("y"))),
             ))]),
         }),
         Stmt::Expression(Expr::FuncLiteral {
-            parameters: Params::from(vec![Expr::Ident(String::from("x"))]),
-            body: Block::from(vec![Stmt::Expression(Expr::Infix(
+            params: Params::from(vec![Expr::Ident(String::from("x"))]),
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
                 Box::new(Expr::Ident(String::from("x"))),
                 Operator::Plus,
                 Box::new(Expr::Ident(String::from("y"))),
@@ -403,8 +399,8 @@ fn test_parse_call_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![Stmt::Expression(Expr::Call {
-        func_name: Box::new(Expr::Ident(String::from("add").into())),
-        arguments: Args::from(vec![
+        func_name: Box::new(Expr::Ident(String::from("add"))),
+        args: Args::from(vec![
             Expr::IntLiteral(1),
             Expr::Infix(
                 Box::new(Expr::IntLiteral(2)),

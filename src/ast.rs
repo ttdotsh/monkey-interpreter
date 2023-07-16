@@ -6,8 +6,6 @@ use std::{fmt::Display, ops::Deref};
 #[derive(Debug, PartialEq)]
 pub struct Ast(pub Vec<Stmt>);
 
-pub type Block = Ast;
-
 impl From<Vec<Stmt>> for Ast {
     fn from(value: Vec<Stmt>) -> Self {
         Ast(value)
@@ -70,17 +68,17 @@ pub enum Expr {
     Prefix(Operator, Box<Expr>),
     Infix(Box<Expr>, Operator, Box<Expr>),
     If {
-        condition: Box<Expr>,
-        consequence: Block,
-        alternative: Option<Block>,
+        check: Box<Expr>,
+        block: Ast,
+        alt: Option<Ast>,
     },
     FuncLiteral {
-        parameters: Params,
-        body: Block,
+        params: Params,
+        body: Ast,
     },
     Call {
         func_name: Box<Expr>,
-        arguments: Args,
+        args: Args,
     },
 }
 
@@ -92,25 +90,18 @@ impl Display for Expr {
             Self::BooleanLiteral(b) => write!(f, "{}", b),
             Self::Prefix(operator, right) => write!(f, "({}{})", operator, right),
             Self::Infix(left, operator, right) => write!(f, "({} {} {})", left, operator, right),
-            Self::If {
-                condition,
-                consequence,
-                alternative,
-            } => {
-                write!(f, "if {} {}", condition, consequence)?;
-                if let Some(alt) = alternative {
+            Self::If { check, block, alt } => {
+                write!(f, "if {} {}", check, block)?;
+                if let Some(alt) = alt {
                     write!(f, " else {}", alt)?;
                 }
                 Ok(())
             }
-            Self::FuncLiteral { parameters, body } => {
-                write!(f, "fn({}) {{ {} }}", parameters, body)
+            Self::FuncLiteral { params, body } => {
+                write!(f, "fn({}) {{ {} }}", params, body)
             }
-            Self::Call {
-                func_name,
-                arguments,
-            } => {
-                write!(f, "{}({})", func_name, arguments)
+            Self::Call { func_name, args } => {
+                write!(f, "{}({})", func_name, args)
             }
         }
     }
