@@ -41,15 +41,12 @@ pub enum Token<'a> {
 
 impl Token<'_> {
     pub fn is(&self, token: &Self) -> bool {
-        if self == token {
-            return true;
-        }
-
-        return match (self, token) {
+        match (self, token) {
             (Token::Ident(_), Token::Ident(_)) => true,
             (Token::Int(_), Token::Int(_)) => true,
+            _ if self == token => true,
             _ => false,
-        };
+        }
     }
 
     pub fn literal(&self) -> &str {
