@@ -225,7 +225,7 @@ impl Parser<'_> {
             args.push(self.parse_expr(Precedence::Lowest)?);
             if self.next_token.is(&Token::Comma) {
                 self.step();
-                self.step(); // step past the comma, to the start of the next expression
+                self.step();
             } else {
                 self.expect_next(Token::CloseParen)?;
             }
