@@ -3,155 +3,32 @@ use std::{fmt::Display, ops::Deref};
 /*
 * Abstract Syntax Tree
 */
+#[derive(Debug, PartialEq)]
+pub struct Ast(pub Vec<Stmt>);
 
-/*
-* TODO: Explore the idea of generalizing this data structure with generics
-* Ast, Block, Arguments and Parameters are all very similar implementations
-*/
-pub struct Ast(Vec<Statement>);
-
-impl From<Vec<Statement>> for Ast {
-    fn from(value: Vec<Statement>) -> Self {
+impl From<Vec<Stmt>> for Ast {
+    fn from(value: Vec<Stmt>) -> Self {
         Ast(value)
     }
 }
 
 impl Deref for Ast {
-    type Target = Vec<Statement>;
+    type Target = Vec<Stmt>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-/*
-* Statements
-*/
-#[derive(Debug, PartialEq)]
-pub enum Statement {
-    Let {
-        name: Indentifier,
-        value: Expression,
-    },
-    Return(Expression),
-    Expression(Expression),
-}
-
-impl Display for Statement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Let { name, value } => write!(f, "let {} = {};", name, value),
-            Self::Return(expr) => write!(f, "return {};", expr),
-            Self::Expression(expr) => write!(f, "{}", expr),
-        }
+impl std::ops::DerefMut for Ast {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Block(pub Vec<Statement>);
-
-impl Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = &self
-            .0
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>()
-            .join("; ");
-        write!(f, "{}", string)
-    }
-}
-
-/*
-* Expressions
-*/
-#[derive(Debug, PartialEq)]
-pub enum Expression {
-    Ident(Indentifier),
-    IntLiteral(i64),
-    BooleanLiteral(bool),
-    Prefix {
-        operator: Operator,
-        right: Box<Expression>,
-    },
-    Infix {
-        left: Box<Expression>,
-        operator: Operator,
-        right: Box<Expression>,
-    },
-    If {
-        condition: Box<Expression>,
-        consequence: Block,
-        alternative: Option<Block>,
-    },
-    FuncLiteral {
-        parameters: Parameters,
-        body: Block,
-    },
-    Call {
-        function: Box<Expression>,
-        arguments: Arguments,
-    },
-}
-
-impl Display for Expression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ident(i) => write!(f, "{}", i),
-            Self::IntLiteral(i) => write!(f, "{}", i),
-            Self::BooleanLiteral(b) => write!(f, "{}", b),
-            Self::Prefix { operator, right } => write!(f, "({}{})", operator, right),
-            Self::Infix {
-                left,
-                operator,
-                right,
-            } => write!(f, "({} {} {})", left, operator, right),
-            Self::If {
-                condition,
-                consequence,
-                alternative,
-            } => {
-                write!(f, "if {} {}", condition, consequence)?;
-                if let Some(alt) = alternative {
-                    write!(f, " else {}", alt)?;
-                }
-                Ok(())
-            }
-            Self::FuncLiteral { parameters, body } => {
-                write!(f, "fn({}) {{ {} }}", parameters, body)
-            }
-            Self::Call {
-                function,
-                arguments,
-            } => {
-                write!(f, "{}({})", function, arguments)
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Indentifier(String);
-
-impl Display for Indentifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<String> for Indentifier {
-    fn from(value: String) -> Self {
-        Indentifier(value)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Parameters(pub Vec<Expression>);
-
-impl Display for Parameters {
+impl Display for Ast {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
-            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
@@ -160,13 +37,102 @@ impl Display for Parameters {
     }
 }
 
+/*
+* Statements
+*/
 #[derive(Debug, PartialEq)]
-pub struct Arguments(pub Vec<Expression>);
+pub enum Stmt {
+    Let { ident: String, val: Expr },
+    Return(Expr),
+    Expression(Expr),
+}
 
-impl Display for Arguments {
+impl Display for Stmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Let { ident, val } => write!(f, "let {} = {};", ident, val),
+            Self::Return(expr) => write!(f, "return {};", expr),
+            Self::Expression(expr) => write!(f, "{}", expr),
+        }
+    }
+}
+
+/*
+* Expressions
+*/
+#[derive(Debug, PartialEq)]
+pub enum Expr {
+    Ident(String),
+    IntLiteral(i32),
+    BooleanLiteral(bool),
+    Prefix(Operator, Box<Expr>),
+    Infix(Box<Expr>, Operator, Box<Expr>),
+    If {
+        check: Box<Expr>,
+        block: Ast,
+        alt: Option<Ast>,
+    },
+    FuncLiteral {
+        params: Params,
+        body: Ast,
+    },
+    Call {
+        func_name: Box<Expr>,
+        args: Args,
+    },
+}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ident(i) => write!(f, "{}", i),
+            Self::IntLiteral(i) => write!(f, "{}", i),
+            Self::BooleanLiteral(b) => write!(f, "{}", b),
+            Self::Prefix(operator, right) => write!(f, "({}{})", operator, right),
+            Self::Infix(left, operator, right) => write!(f, "({} {} {})", left, operator, right),
+            Self::If { check, block, alt } => {
+                write!(f, "if {} {}", check, block)?;
+                if let Some(alt) = alt {
+                    write!(f, " else {}", alt)?;
+                }
+                Ok(())
+            }
+            Self::FuncLiteral { params, body } => {
+                write!(f, "fn({}) {{ {} }}", params, body)
+            }
+            Self::Call { func_name, args } => {
+                write!(f, "{}({})", func_name, args)
+            }
+        }
+    }
+}
+
+/*
+* Function Parameters and Arguments
+*/
+#[derive(Debug, PartialEq)]
+pub struct ExpressionList(Vec<Expr>);
+
+pub type Params = ExpressionList;
+pub type Args = ExpressionList;
+
+impl From<Vec<Expr>> for ExpressionList {
+    fn from(value: Vec<Expr>) -> Self {
+        ExpressionList(value)
+    }
+}
+
+impl Deref for ExpressionList {
+    type Target = Vec<Expr>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for ExpressionList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
-            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()

@@ -2,7 +2,7 @@
 mod test;
 
 use crate::{
-    ast::{Arguments, Ast, Block, Expression, Indentifier, Operator, Parameters, Statement},
+    ast::{Args, Ast, Expr, Operator, Params, Stmt},
     lex::Lexer,
     token::Token,
 };
@@ -10,232 +10,203 @@ use crate::{
 /*
 * Parser
 */
-pub struct Parser<'a> {
-    lexer: Lexer<'a>,
-    current_token: Token,
-    peek_token: Token,
+pub struct Parser<'p> {
+    lexer: Lexer<'p>,
+    curr_token: Token<'p>,
+    next_token: Token<'p>,
     pub errors: Vec<ParseError>,
 }
 
-impl Parser<'_> {
-    pub fn new(src: &str) -> Parser {
-        Parser {
+impl<'p> Parser<'p> {
+    pub fn new<'s: 'p>(src: &'s str) -> Parser<'p> {
+        let mut parser = Parser {
             lexer: Lexer::new(src),
-            current_token: Default::default(),
-            peek_token: Default::default(),
+            curr_token: Default::default(),
+            next_token: Default::default(),
             errors: Vec::new(),
-        }
+        };
+        parser.step();
+        parser
     }
+}
 
+impl Parser<'_> {
     pub fn parse(&mut self) -> Ast {
-        let mut program = Vec::new();
+        let mut statements = Vec::new();
         self.step();
-        self.step();
-        while !self.current_token.is(&Token::Eof) {
-            match self.parse_statement() {
-                Ok(s) => program.push(s),
+        while !self.curr_token.is(&Token::CloseCurly) && !self.curr_token.is(&Token::Eof) {
+            match self.parse_stmt() {
+                Ok(stmt) => statements.push(stmt),
                 Err(e) => self.errors.push(e),
             }
             self.step();
         }
-        Ast::from(program)
+        Ast::from(statements)
     }
 
     fn step(&mut self) {
-        self.current_token = std::mem::take(&mut self.peek_token);
-        self.peek_token = self.lexer.next_token();
+        self.curr_token = std::mem::take(&mut self.next_token);
+        self.next_token = self.lexer.next_token();
     }
 
     fn expect_next(&mut self, expected_token: Token) -> Result<(), ParseError> {
-        if self.peek_token.is(&expected_token) {
+        if self.next_token.is(&expected_token) {
             self.step();
             Ok(())
         } else {
-            Err(ParseError::UnexpectedToken {
-                expected: expected_token,
-                recieved: self.peek_token.to_owned(),
-            })
+            Err(ParseError::UnexpectedToken)
         }
     }
 
     fn expect_ident(&mut self) -> Result<(), ParseError> {
-        if self.peek_token.is_ident() {
-            self.step();
-            Ok(())
-        } else {
-            Err(ParseError::ExpectedIdentifier)
+        match self.next_token {
+            Token::Ident(_) => {
+                self.step();
+                Ok(())
+            }
+            _ => Err(ParseError::ExpectedIdentifier),
         }
     }
 
-    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        let statement = match self.current_token {
+    fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
+        let statement = match self.curr_token {
             Token::Let => {
-                let (name, value) = self.parse_let_statement()?;
-                Statement::Let { name, value }
+                let (ident, val) = self.parse_let_stmt()?;
+                Stmt::Let { ident, val }
             }
             Token::Return => {
                 self.step();
-                Statement::Return(self.parse_expression(Precedence::Lowest)?)
+                Stmt::Return(self.parse_expr(Precedence::Lowest)?)
             }
-            _ => Statement::Expression(self.parse_expression(Precedence::Lowest)?),
+            _ => Stmt::Expression(self.parse_expr(Precedence::Lowest)?),
         };
 
-        if self.peek_token.is(&Token::Semicolon) {
+        if self.next_token.is(&Token::Semicolon) {
             self.step();
         }
 
         Ok(statement)
     }
 
-    fn parse_let_statement(&mut self) -> Result<(Indentifier, Expression), ParseError> {
-        let name = match &mut self.peek_token {
-            Token::Ident(s) => {
-                let literal = std::mem::take(s);
-                self.step();
-                Ok(Indentifier::from(literal))
-            }
-            _ => Err(ParseError::ExpectedIdentifier),
-        }?;
+    fn parse_let_stmt(&mut self) -> Result<(String, Expr), ParseError> {
+        self.expect_ident()?;
+        let name = String::from(self.curr_token.literal());
 
         self.expect_next(Token::Assign)?;
         self.step();
 
-        let value = self.parse_expression(Precedence::Lowest)?;
+        let value = self.parse_expr(Precedence::Lowest)?;
 
         Ok((name, value))
     }
 
-    fn parse_block(&mut self) -> Block {
-        let mut statements = Vec::new();
-        self.step();
-        while !self.current_token.is(&Token::CloseCurly) && !self.current_token.is(&Token::Eof) {
-            match self.parse_statement() {
-                Ok(stmt) => statements.push(stmt),
-                Err(e) => self.errors.push(e),
-            }
-            self.step();
-        }
-        Block(statements)
-    }
-
-    fn parse_expression(&mut self, cur_precedence: Precedence) -> Result<Expression, ParseError> {
-        let mut expression = match &mut self.current_token {
-            Token::Ident(s) => Ok(Expression::Ident(std::mem::take(s).into())),
+    fn parse_expr(&mut self, prec: Precedence) -> Result<Expr, ParseError> {
+        let mut expression = match self.curr_token {
+            Token::Ident(s) => Ok(Expr::Ident(String::from(s))),
             Token::Int(s) => {
-                let int_literal = s
-                    .parse()
-                    .map_err(|_| ParseError::ParseIntError(std::mem::take(s)))?;
-                Ok(Expression::IntLiteral(int_literal))
+                let int_val = s.parse().map_err(|_| ParseError::ParseIntError)?;
+                Ok(Expr::IntLiteral(int_val))
             }
-            Token::True | Token::False => Ok(Expression::BooleanLiteral(
-                self.current_token.is(&Token::True),
-            )),
-            Token::Bang | Token::Minus => self.parse_prefix_expression(),
-            Token::OpenParen => self.parse_grouped_expression(),
-            Token::If => self.parse_if_expression(),
-            Token::Function => self.parse_function_literal_expression(),
+            Token::True | Token::False => {
+                Ok(Expr::BooleanLiteral(self.curr_token.is(&Token::True)))
+            }
+            Token::Bang | Token::Minus => self.parse_prefix_expr(),
+            Token::OpenParen => self.parse_grouped_expr(),
+            Token::If => self.parse_if_expr(),
+            Token::Function => self.parse_func_literal_expr(),
             _ => Err(ParseError::ExpectedExpression),
         }?;
 
-        while !self.current_token.is(&Token::Semicolon)
-            && cur_precedence < Precedence::from(&self.peek_token)
-        {
+        while !self.curr_token.is(&Token::Semicolon) && prec < Precedence::from(&self.next_token) {
             self.step();
-            expression = match self.current_token {
-                Token::OpenParen => self.parse_function_call_expression(expression),
-                _ => self.parse_infix_expression(expression),
+            expression = match self.curr_token {
+                Token::OpenParen => self.parse_func_call_expr(expression),
+                _ => self.parse_infix_expr(expression),
             }?;
         }
 
         Ok(expression)
     }
 
-    fn parse_prefix_expression(&mut self) -> Result<Expression, ParseError> {
-        let operator = Operator::try_from(&self.current_token)?;
+    fn parse_prefix_expr(&mut self) -> Result<Expr, ParseError> {
+        let operator = Operator::try_from(&self.curr_token)?;
         self.step();
 
-        Ok(Expression::Prefix {
+        Ok(Expr::Prefix(
             operator,
-            right: Box::new(self.parse_expression(Precedence::Prefix)?),
-        })
+            Box::new(self.parse_expr(Precedence::Prefix)?),
+        ))
     }
 
-    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
-        let operator = Operator::try_from(&self.current_token)?;
-        let prec = Precedence::from(&self.current_token);
+    fn parse_infix_expr(&mut self, left: Expr) -> Result<Expr, ParseError> {
+        let operator = Operator::try_from(&self.curr_token)?;
+        let prec = Precedence::from(&self.curr_token);
 
         self.step();
-        let right = self.parse_expression(prec)?;
+        let right = self.parse_expr(prec)?;
 
-        Ok(Expression::Infix {
-            left: Box::new(left),
-            operator,
-            right: Box::new(right),
-        })
+        Ok(Expr::Infix(Box::new(left), operator, Box::new(right)))
     }
 
-    fn parse_grouped_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_grouped_expr(&mut self) -> Result<Expr, ParseError> {
         self.step();
-        let expression = self.parse_expression(Precedence::Lowest)?;
+        let expression = self.parse_expr(Precedence::Lowest)?;
         self.expect_next(Token::CloseParen)?;
 
         Ok(expression)
     }
 
-    fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_if_expr(&mut self) -> Result<Expr, ParseError> {
         self.expect_next(Token::OpenParen)?;
         self.step();
-        let condition = self.parse_expression(Precedence::Lowest)?;
+        let condition = self.parse_expr(Precedence::Lowest)?;
 
         self.expect_next(Token::CloseParen)?;
         self.expect_next(Token::OpenCurly)?;
-        let consequence = self.parse_block();
+        let block = self.parse();
 
-        let alternative = if self.peek_token.is(&Token::Else) {
+        let alt = if self.next_token.is(&Token::Else) {
             self.step();
             self.expect_next(Token::OpenCurly)?;
-            Some(self.parse_block())
+            Some(self.parse())
         } else {
             None
         };
 
-        Ok(Expression::If {
-            condition: Box::new(condition),
-            consequence,
-            alternative,
+        Ok(Expr::If {
+            check: Box::new(condition),
+            block,
+            alt,
         })
     }
 
-    fn parse_function_literal_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_func_literal_expr(&mut self) -> Result<Expr, ParseError> {
         self.expect_next(Token::OpenParen)?;
-        let parameters = self.parse_function_params()?;
+        let params = self.parse_func_params()?;
 
         self.expect_next(Token::OpenCurly)?;
-        let body = self.parse_block();
+        let body = self.parse();
 
-        Ok(Expression::FuncLiteral { parameters, body })
+        Ok(Expr::FuncLiteral { params, body })
     }
 
-    fn parse_function_call_expression(
-        &mut self,
-        function: Expression,
-    ) -> Result<Expression, ParseError> {
-        Ok(Expression::Call {
-            function: Box::new(function),
-            arguments: self.parse_function_args()?,
+    fn parse_func_call_expr(&mut self, function: Expr) -> Result<Expr, ParseError> {
+        Ok(Expr::Call {
+            func_name: Box::new(function),
+            args: self.parse_func_args()?,
         })
     }
 
-    fn parse_function_params(&mut self) -> Result<Parameters, ParseError> {
+    fn parse_func_params(&mut self) -> Result<Params, ParseError> {
         let mut params = Vec::new();
         let end_of_params = Token::CloseParen;
-        if self.peek_token.is(&end_of_params) {
+        if self.next_token.is(&end_of_params) {
             self.step();
         } else {
             self.expect_ident()?;
-            while !self.current_token.is(&end_of_params) {
-                params.push(self.parse_expression(Precedence::Lowest)?);
-                if self.peek_token.is(&Token::Comma) {
+            while !self.curr_token.is(&end_of_params) {
+                params.push(self.parse_expr(Precedence::Lowest)?);
+                if self.next_token.is(&Token::Comma) {
                     self.step();
                     self.expect_ident()?;
                 } else {
@@ -243,23 +214,23 @@ impl Parser<'_> {
                 }
             }
         }
-        Ok(Parameters(params))
+        Ok(Params::from(params))
     }
 
-    fn parse_function_args(&mut self) -> Result<Arguments, ParseError> {
+    fn parse_func_args(&mut self) -> Result<Args, ParseError> {
         let mut args = Vec::new();
         let end_of_args = Token::CloseParen;
         self.step();
-        while !self.current_token.is(&end_of_args) {
-            args.push(self.parse_expression(Precedence::Lowest)?);
-            if self.peek_token.is(&Token::Comma) {
+        while !self.curr_token.is(&end_of_args) {
+            args.push(self.parse_expr(Precedence::Lowest)?);
+            if self.next_token.is(&Token::Comma) {
                 self.step();
                 self.step();
             } else {
                 self.expect_next(Token::CloseParen)?;
             }
         }
-        Ok(Arguments(args))
+        Ok(Args::from(args))
     }
 }
 
@@ -280,7 +251,7 @@ enum Precedence {
 /*
 * Mapping Precedence and Operators to Tokens
 */
-impl From<&Token> for Precedence {
+impl From<&Token<'_>> for Precedence {
     fn from(value: &Token) -> Self {
         match value {
             Token::OpenParen => Precedence::Call,
@@ -293,7 +264,7 @@ impl From<&Token> for Precedence {
     }
 }
 
-impl TryFrom<&Token> for Operator {
+impl TryFrom<&Token<'_>> for Operator {
     type Error = ParseError;
 
     fn try_from(value: &Token) -> Result<Self, Self::Error> {
@@ -317,9 +288,9 @@ impl TryFrom<&Token> for Operator {
 */
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
-    UnexpectedToken { expected: Token, recieved: Token },
+    UnexpectedToken,
     ExpectedExpression,
-    ParseIntError(String),
+    ParseIntError,
     ExpectedOperator,
     ExpectedIdentifier,
 }

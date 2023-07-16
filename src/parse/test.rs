@@ -1,7 +1,6 @@
 use crate::{
-    ast::{Arguments, Ast, Block, Expression, Operator, Parameters, Statement},
+    ast::{Args, Ast, Expr, Operator, Params, Stmt},
     parse::{ParseError, Parser},
-    token::Token,
 };
 
 fn test(src: &str) -> (Ast, Vec<ParseError>) {
@@ -22,17 +21,17 @@ fn test_parse_let_statements() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Let {
-            name: String::from("x").into(),
-            value: Expression::IntLiteral(5),
+        Stmt::Let {
+            ident: String::from("x"),
+            val: Expr::IntLiteral(5),
         },
-        Statement::Let {
-            name: String::from("y").into(),
-            value: Expression::IntLiteral(10),
+        Stmt::Let {
+            ident: String::from("y"),
+            val: Expr::IntLiteral(10),
         },
-        Statement::Let {
-            name: String::from("foobar").into(),
-            value: Expression::IntLiteral(838383),
+        Stmt::Let {
+            ident: String::from("foobar"),
+            val: Expr::IntLiteral(838383),
         },
     ];
 
@@ -57,9 +56,9 @@ fn test_parse_return_statement() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Return(Expression::IntLiteral(5)),
-        Statement::Return(Expression::IntLiteral(10)),
-        Statement::Return(Expression::IntLiteral(993322)),
+        Stmt::Return(Expr::IntLiteral(5)),
+        Stmt::Return(Expr::IntLiteral(10)),
+        Stmt::Return(Expr::IntLiteral(993322)),
     ];
 
     assert_eq!(expected_statements.len(), program.len());
@@ -79,13 +78,7 @@ fn test_let_statement_syntax_errors() {
         "#,
     );
 
-    let expected_errors = vec![
-        ParseError::ExpectedIdentifier,
-        ParseError::UnexpectedToken {
-            expected: Token::Assign,
-            recieved: Token::Ident(String::from("y")),
-        },
-    ];
+    let expected_errors = vec![ParseError::ExpectedIdentifier, ParseError::UnexpectedToken];
 
     expected_errors
         .into_iter()
@@ -99,8 +92,7 @@ fn test_parse_identifier_expression() {
     assert!(errors.is_empty());
     assert_eq!(program.len(), 1);
 
-    let expected_statement =
-        Statement::Expression(Expression::Ident(String::from("foobar").into()));
+    let expected_statement = Stmt::Expression(Expr::Ident(String::from("foobar")));
     assert_eq!(expected_statement, program[0]);
 }
 
@@ -111,7 +103,7 @@ fn test_parse_int_literal_expression() {
     assert!(errors.is_empty());
     assert_eq!(program.len(), 1);
 
-    let expected_statement = Statement::Expression(Expression::IntLiteral(5));
+    let expected_statement = Stmt::Expression(Expr::IntLiteral(5));
     assert_eq!(expected_statement, program[0]);
 }
 
@@ -127,8 +119,8 @@ fn test_parse_boolean_literal_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Expression(Expression::BooleanLiteral(true)),
-        Statement::Expression(Expression::BooleanLiteral(false)),
+        Stmt::Expression(Expr::BooleanLiteral(true)),
+        Stmt::Expression(Expr::BooleanLiteral(false)),
     ];
 
     assert_eq!(expected_statements.len(), program.len());
@@ -153,22 +145,19 @@ fn test_parse_prefix_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Expression(Expression::Prefix {
-            operator: Operator::Bang,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Prefix {
-            operator: Operator::Minus,
-            right: Box::new(Expression::IntLiteral(15)),
-        }),
-        Statement::Expression(Expression::Prefix {
-            operator: Operator::Bang,
-            right: Box::new(Expression::BooleanLiteral(true)),
-        }),
-        Statement::Expression(Expression::Prefix {
-            operator: Operator::Bang,
-            right: Box::new(Expression::BooleanLiteral(false)),
-        }),
+        Stmt::Expression(Expr::Prefix(Operator::Bang, Box::new(Expr::IntLiteral(5)))),
+        Stmt::Expression(Expr::Prefix(
+            Operator::Minus,
+            Box::new(Expr::IntLiteral(15)),
+        )),
+        Stmt::Expression(Expr::Prefix(
+            Operator::Bang,
+            Box::new(Expr::BooleanLiteral(true)),
+        )),
+        Stmt::Expression(Expr::Prefix(
+            Operator::Bang,
+            Box::new(Expr::BooleanLiteral(false)),
+        )),
     ];
 
     assert_eq!(expected_statements.len(), program.len());
@@ -200,61 +189,61 @@ fn test_parse_infix_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::Plus,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::Minus,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::Multiplication,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::Division,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::GreaterThan,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::LessThan,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::Equals,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::IntLiteral(5)),
-            operator: Operator::NotEquals,
-            right: Box::new(Expression::IntLiteral(5)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::BooleanLiteral(true)),
-            operator: Operator::Equals,
-            right: Box::new(Expression::BooleanLiteral(true)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::BooleanLiteral(true)),
-            operator: Operator::NotEquals,
-            right: Box::new(Expression::BooleanLiteral(false)),
-        }),
-        Statement::Expression(Expression::Infix {
-            left: Box::new(Expression::BooleanLiteral(false)),
-            operator: Operator::Equals,
-            right: Box::new(Expression::BooleanLiteral(false)),
-        }),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::Plus,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::Minus,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::Multiplication,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::Division,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::GreaterThan,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::LessThan,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::Equals,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::IntLiteral(5)),
+            Operator::NotEquals,
+            Box::new(Expr::IntLiteral(5)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::BooleanLiteral(true)),
+            Operator::Equals,
+            Box::new(Expr::BooleanLiteral(true)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::BooleanLiteral(true)),
+            Operator::NotEquals,
+            Box::new(Expr::BooleanLiteral(false)),
+        )),
+        Stmt::Expression(Expr::Infix(
+            Box::new(Expr::BooleanLiteral(false)),
+            Operator::Equals,
+            Box::new(Expr::BooleanLiteral(false)),
+        )),
     ];
 
     assert_eq!(expected_statements.len(), program.len());
@@ -267,7 +256,6 @@ fn test_parse_infix_expression() {
 
 #[test]
 fn test_operator_precedence_parsing() -> std::fmt::Result {
-    // These were copied from the book
     let expressions_and_expectations = vec![
         ("-a * b", "((-a) * b)"),
         ("!-a", "(!(-a))"),
@@ -320,28 +308,24 @@ fn test_if_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Expression(Expression::If {
-            condition: Box::new(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x").into())),
-                operator: Operator::LessThan,
-                right: Box::new(Expression::Ident(String::from("y").into())),
-            }),
-            consequence: Block(vec![Statement::Expression(Expression::Ident(
-                String::from("x").into(),
-            ))]),
-            alternative: None,
+        Stmt::Expression(Expr::If {
+            check: Box::new(Expr::Infix(
+                Box::new(Expr::Ident(String::from("x"))),
+                Operator::LessThan,
+                Box::new(Expr::Ident(String::from("y"))),
+            )),
+            block: Ast::from(vec![Stmt::Expression(Expr::Ident(String::from("x")))]),
+            alt: None,
         }),
-        Statement::Expression(Expression::If {
-            condition: Box::new(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x").into())),
-                operator: Operator::LessThan,
-                right: Box::new(Expression::Ident(String::from("y").into())),
-            }),
-            consequence: Block(vec![Statement::Expression(Expression::Ident(
-                String::from("x").into(),
-            ))]),
-            alternative: Some(Block(vec![Statement::Expression(Expression::Ident(
-                String::from("y").into(),
+        Stmt::Expression(Expr::If {
+            check: Box::new(Expr::Infix(
+                Box::new(Expr::Ident(String::from("x"))),
+                Operator::LessThan,
+                Box::new(Expr::Ident(String::from("y"))),
+            )),
+            block: Ast::from(vec![Stmt::Expression(Expr::Ident(String::from("x")))]),
+            alt: Some(Ast::from(vec![Stmt::Expression(Expr::Ident(
+                String::from("y"),
             ))])),
         }),
     ];
@@ -367,32 +351,32 @@ fn test_parse_function_literal() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![
-        Statement::Expression(Expression::FuncLiteral {
-            parameters: Parameters(vec![
-                Expression::Ident(String::from("x").into()),
-                Expression::Ident(String::from("y").into()),
+        Stmt::Expression(Expr::FuncLiteral {
+            params: Params::from(vec![
+                Expr::Ident(String::from("x")),
+                Expr::Ident(String::from("y")),
             ]),
-            body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x").into())),
-                operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y").into())),
-            })]),
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
+                Box::new(Expr::Ident(String::from("x"))),
+                Operator::Plus,
+                Box::new(Expr::Ident(String::from("y"))),
+            ))]),
         }),
-        Statement::Expression(Expression::FuncLiteral {
-            parameters: Parameters(vec![]),
-            body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x").into())),
-                operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y").into())),
-            })]),
+        Stmt::Expression(Expr::FuncLiteral {
+            params: Params::from(vec![]),
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
+                Box::new(Expr::Ident(String::from("x"))),
+                Operator::Plus,
+                Box::new(Expr::Ident(String::from("y"))),
+            ))]),
         }),
-        Statement::Expression(Expression::FuncLiteral {
-            parameters: Parameters(vec![Expression::Ident(String::from("x").into())]),
-            body: Block(vec![Statement::Expression(Expression::Infix {
-                left: Box::new(Expression::Ident(String::from("x").into())),
-                operator: Operator::Plus,
-                right: Box::new(Expression::Ident(String::from("y").into())),
-            })]),
+        Stmt::Expression(Expr::FuncLiteral {
+            params: Params::from(vec![Expr::Ident(String::from("x"))]),
+            body: Ast::from(vec![Stmt::Expression(Expr::Infix(
+                Box::new(Expr::Ident(String::from("x"))),
+                Operator::Plus,
+                Box::new(Expr::Ident(String::from("y"))),
+            ))]),
         }),
     ];
 
@@ -414,20 +398,20 @@ fn test_parse_call_expression() {
 
     assert!(errors.is_empty());
 
-    let expected_statements = vec![Statement::Expression(Expression::Call {
-        function: Box::new(Expression::Ident(String::from("add").into())),
-        arguments: Arguments(vec![
-            Expression::IntLiteral(1),
-            Expression::Infix {
-                left: Box::new(Expression::IntLiteral(2)),
-                operator: Operator::Multiplication,
-                right: Box::new(Expression::IntLiteral(3)),
-            },
-            Expression::Infix {
-                left: Box::new(Expression::IntLiteral(4)),
-                operator: Operator::Plus,
-                right: Box::new(Expression::IntLiteral(5)),
-            },
+    let expected_statements = vec![Stmt::Expression(Expr::Call {
+        func_name: Box::new(Expr::Ident(String::from("add"))),
+        args: Args::from(vec![
+            Expr::IntLiteral(1),
+            Expr::Infix(
+                Box::new(Expr::IntLiteral(2)),
+                Operator::Multiplication,
+                Box::new(Expr::IntLiteral(3)),
+            ),
+            Expr::Infix(
+                Box::new(Expr::IntLiteral(4)),
+                Operator::Plus,
+                Box::new(Expr::IntLiteral(5)),
+            ),
         ]),
     })];
 
