@@ -6,24 +6,26 @@ use object::Object;
 /*
 * Evaluation functions for different Node types
 */
-#[allow(unused)]
-pub fn eval_program(ast: Ast) -> Object {
+pub fn eval_program(Ast(statements): Ast) -> Object {
     let mut obj = Object::Null;
-    for stmt in ast.0 {
-        obj = eval_statement(stmt);
-        if let Object::ReturnValue(o) = obj {
-            return *o;
+    for s in statements {
+        obj = eval_statement(s);
+        match obj {
+            Object::ReturnValue(v) => return *v,
+            Object::Error(_) => return obj,
+            _ => {}
         }
     }
     obj
 }
 
-fn eval_block(ast: Ast) -> Object {
+fn eval_block(Ast(statements): Ast) -> Object {
     let mut obj = Object::Null;
-    for stmt in ast.0 {
-        obj = eval_statement(stmt);
-        if let Object::ReturnValue(_) = obj {
-            return obj;
+    for s in statements {
+        obj = eval_statement(s);
+        match obj {
+            Object::ReturnValue(_) | Object::Error(_) => return obj,
+            _ => {}
         }
     }
     obj
@@ -47,7 +49,7 @@ fn eval_expression(expr: Expr) -> Object {
         Expr::Prefix(op, right) => eval_prefix_expression(op, *right),
         Expr::Infix(left, op, right) => eval_infix_expression(*left, op, *right),
         Expr::If { check, block, alt } => eval_if_expr(*check, block, alt),
-        _ => todo!(),
+        _ => Object::Error(format!("Unsupported expression type: {}", expr)),
     }
 }
 
@@ -59,22 +61,18 @@ fn eval_prefix_expression(op: Operator, right: Expr) -> Object {
     match op {
         Operator::Bang => eval_bang_prefix(operand),
         Operator::Minus => eval_minus_prefix(operand),
-        _ => todo!(),
+        _ => Object::Error(format!("Unsupported operator as prefix: {}", op)),
     }
 }
 
 fn eval_bang_prefix(value: Object) -> Object {
-    match value {
-        Object::Boolean(b) => Object::Boolean(!b),
-        Object::Null => Object::Boolean(true),
-        _ => Object::Boolean(false),
-    }
+    Object::Boolean(!value.is_truthy())
 }
 
 fn eval_minus_prefix(value: Object) -> Object {
-    match value {
+    match &value {
         Object::Integer(i) => Object::Integer(-i),
-        _ => Object::Null,
+        _ => Object::Error(format!("No such negative value of {}", value)),
     }
 }
 
@@ -91,65 +89,77 @@ fn eval_infix_expression(left: Expr, op: Operator, right: Expr) -> Object {
         Operator::GreaterThan => eval_greater_infix(eval_expression(left), eval_expression(right)),
         Operator::Equals => eval_equal_infix(eval_expression(left), eval_expression(right)),
         Operator::NotEquals => eval_not_equal_infix(eval_expression(left), eval_expression(right)),
-        _ => Object::Null,
+        _ => Object::Error(format!("Unsupported operator as infix: {}", op)),
     }
 }
 
 fn eval_plus_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Integer(l + r),
-        _ => Object::Null,
+        _ => Object::Error(format!("Cannot add {} to {}", left, right)),
     }
 }
 
 fn eval_minus_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Integer(l - r),
-        _ => Object::Null,
+        _ => Object::Error(format!("Cannot subtract {} from {}", left, right)),
     }
 }
 
 fn eval_mult_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Integer(l * r),
-        _ => Object::Null,
+        _ => Object::Error(format!("Cannot multiply {} and {}", left, right)),
     }
 }
 
 fn eval_div_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Integer(l / r),
-        _ => Object::Null,
+        _ => Object::Error(format!("Cannot divide {} and {}", left, right)),
     }
 }
 
 fn eval_less_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Boolean(l < r),
-        _ => Object::Null,
+        _ => Object::Error(format!(
+            "Cannot compare equality between {} and {}",
+            left, right
+        )),
     }
 }
 
 fn eval_greater_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Boolean(l > r),
-        _ => Object::Null,
+        _ => Object::Error(format!(
+            "Cannot compare equality between {} and {}",
+            left, right
+        )),
     }
 }
 
 fn eval_equal_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Boolean(l == r),
         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(l == r),
-        _ => Object::Null,
+        _ => Object::Error(format!(
+            "Cannot compare equality between {} and {}",
+            left, right
+        )),
     }
 }
 
 fn eval_not_equal_infix(left: Object, right: Object) -> Object {
-    match (left, right) {
+    match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => Object::Boolean(l != r),
         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(l != r),
-        _ => Object::Null,
+        _ => Object::Error(format!(
+            "Cannot compare equality between {} and {}",
+            left, right
+        )),
     }
 }
 
@@ -278,6 +288,44 @@ mod test {
                 }
                 "#,
                 Object::Integer(10),
+            ),
+        ];
+        input_and_expected
+            .into_iter()
+            .for_each(|(i, e)| assert_eq!(test(i), e))
+    }
+
+    #[test]
+    fn test_eval_errors() {
+        let input_and_expected = vec![
+            ("5 + true;", Object::Error("Cannot add 5 to true".into())),
+            ("5 + true; 5;", Object::Error("Cannot add 5 to true".into())),
+            (
+                "-true",
+                Object::Error("No such negative value of true".into()),
+            ),
+            (
+                "true + false;",
+                Object::Error("Cannot add true to false".into()),
+            ),
+            (
+                "5; true + false; 5",
+                Object::Error("Cannot add true to false".into()),
+            ),
+            (
+                "if (10 > 1) { true + false; }",
+                Object::Error("Cannot add true to false".into()),
+            ),
+            (
+                r#" 
+                if (10 > 1) {
+                    if (10 > 1) {
+                        return true + false;
+                    }
+                    return 1; 
+                }
+                "#,
+                Object::Error("Cannot add true to false".into()),
             ),
         ];
         input_and_expected

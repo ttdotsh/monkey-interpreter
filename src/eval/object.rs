@@ -8,6 +8,7 @@ pub enum Object {
     Boolean(bool),
 
     ReturnValue(Box<Object>),
+    Error(String),
     Null,
 }
 
@@ -17,6 +18,7 @@ impl Display for Object {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Boolean(b) => write!(f, "{}", b),
             Object::ReturnValue(v) => write!(f, "{}", v),
+            Object::Error(s) => write!(f, "{}", s),
             Object::Null => write!(f, "null"),
         }
     }

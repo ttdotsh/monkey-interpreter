@@ -1,4 +1,4 @@
-use monkey_interpreter::{eval::eval, parse::Parser};
+use monkey_interpreter::{eval::eval_program, parse::Parser};
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 const MONKEY_FACE: &str = r#"
@@ -59,7 +59,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
                 let program = parser.parse();
 
                 if parser.errors.is_empty() {
-                    let evaluated = eval(program);
+                    let evaluated = eval_program(program);
                     writeln!(writer, "{}", evaluated)?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;
