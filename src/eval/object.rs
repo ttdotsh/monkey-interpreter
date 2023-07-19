@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 #[allow(unused)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     /* Types */
     Integer(i32),

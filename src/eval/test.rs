@@ -1,10 +1,11 @@
-use super::{eval_program, object::Object};
+use super::{object::Object, Evaluator};
 use crate::parse::Parser;
 
 fn test(src: &str) -> Object {
     let mut parser = Parser::new(src);
     let program = parser.parse();
-    eval_program(program)
+    let evaluator = Evaluator::new();
+    evaluator.eval(program)
 }
 
 #[test]
@@ -146,6 +147,26 @@ fn test_eval_errors() {
                 }
                 "#,
             Object::Error("Cannot add true to false".into()),
+        ),
+        (
+            "foobar",
+            Object::Error("Identifier not found: foobar".into()),
+        ),
+    ];
+    input_and_expected
+        .into_iter()
+        .for_each(|(i, e)| assert_eq!(test(i), e))
+}
+
+#[test]
+fn test_eval_let_stmts() {
+    let input_and_expected = vec![
+        ("let a = 5; a;", Object::Integer(5)),
+        ("let a = 5 * 5; a;", Object::Integer(25)),
+        ("let a = 5; let b = a; b;", Object::Integer(5)),
+        (
+            "let a = 5; let b = a; let c = a + b + 5; c;",
+            Object::Integer(15),
         ),
     ];
     input_and_expected

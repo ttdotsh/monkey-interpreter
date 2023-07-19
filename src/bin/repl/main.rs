@@ -1,4 +1,4 @@
-use monkey_interpreter::{eval::eval_program, parse::Parser};
+use monkey_interpreter::{eval::Evaluator, parse::Parser};
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 const MONKEY_FACE: &str = r#"
@@ -37,6 +37,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
         MONKEY_FACE
     )?;
 
+    let evaluator = Evaluator::new();
     loop {
         write!(writer, "🐒 -> ")?;
         writer.flush()?;
@@ -54,12 +55,11 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             "monkey" => writeln!(writer, "{}", MONKEY_FACE)?,
             "exit" => return Ok(()),
             src => {
-                // let lex = Lexer::new(src);
                 let mut parser = Parser::new(src);
                 let program = parser.parse();
 
                 if parser.errors.is_empty() {
-                    let evaluated = eval_program(program);
+                    let evaluated = &evaluator.eval(program);
                     writeln!(writer, "{}", evaluated)?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;
