@@ -17,26 +17,24 @@ impl Environment {
         }
     }
 
-    pub fn eval(&self, Ast(statements): Ast) -> Object {
-        let mut obj = Object::Null;
-        for s in statements {
-            match self.eval_statement(s) {
-                Ok(Object::ReturnValue(rv)) => return *rv,
-                Err(s) => return Object::Error(s),
-                Ok(o) => obj = o,
-            }
+    pub fn evaluate(&self, ast: Ast) -> Object {
+        match self.eval_ast(ast) {
+            Ok(Object::ReturnValue(v)) => *v,
+            Err(s) => Object::Error(s),
+            Ok(o) => o,
         }
-        obj
     }
 
-    fn eval_block(&self, Ast(statements): Ast) -> Result<Object> {
+    fn eval_ast(&self, Ast(statements): Ast) -> Result<Object, String> {
         let mut obj = Object::Null;
+
         for s in statements {
             match self.eval_statement(s)? {
                 rv @ Object::ReturnValue(_) => return Ok(rv),
                 o => obj = o,
             }
         }
+
         Ok(obj)
     }
 
