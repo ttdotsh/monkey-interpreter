@@ -1,18 +1,18 @@
-use monkey_interpreter::{eval::Evaluator, parse::Parser};
+use monkey_interpreter::{eval::Environment, parse::Parser};
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 const MONKEY_FACE: &str = r#"
-           __,__
-  .--.  .-"     "-.  .--.
- / .. \/  .-. .-.  \/ .. \
-| |  '|  /   Y   \  |'  | |
-| \   \  \ 0 | 0 /  /   / |
- \ '- ,\.-"""""""-./, -' /
-  ''-' /_   ^ ^   _\ '-''
-      |  \._   _./  |
-       \  \ '~' /  /
-        '._'-=-'_.'
-          '-----'
+               __,__
+      .--.  .-"     "-.  .--.
+     / .. \/  .-. .-.  \/ .. \
+    | |  '|  /   Y   \  |'  | |
+    | \   \  \ 0 | 0 /  /   / |
+     \ '- ,\.-"""""""-./, -' /
+      ''-' /_   ^ ^   _\ '-''
+          |  \._   _./  |
+           \  \ '~' /  /
+            '._'-=-'_.'
+              '-----'
 "#;
 
 const HELP: &str = r#"
@@ -37,7 +37,8 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
         MONKEY_FACE
     )?;
 
-    let evaluator = Evaluator::new();
+    let env = Environment::new();
+
     loop {
         write!(writer, "🐒 -> ")?;
         writer.flush()?;
@@ -59,7 +60,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
                 let program = parser.parse();
 
                 if parser.errors.is_empty() {
-                    let evaluated = &evaluator.eval(program);
+                    let evaluated = &env.evaluate(program);
                     writeln!(writer, "{}", evaluated)?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;

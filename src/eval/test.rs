@@ -1,11 +1,11 @@
-use super::{object::Object, Evaluator};
+use super::{object::Object, Environment};
 use crate::parse::Parser;
 
 fn test(src: &str) -> Object {
     let mut parser = Parser::new(src);
     let program = parser.parse();
-    let evaluator = Evaluator::new();
-    evaluator.eval(program)
+    let env = Environment::new();
+    env.evaluate(program)
 }
 
 #[test]

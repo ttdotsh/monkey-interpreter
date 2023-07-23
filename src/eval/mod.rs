@@ -6,16 +6,14 @@ use crate::ast::{Ast, Expr, Operator, Stmt};
 use object::Object;
 use std::{cell::RefCell, collections::HashMap};
 
-type Result<T> = std::result::Result<T, String>;
-
-pub struct Evaluator {
-    env: RefCell<HashMap<String, Object>>,
+pub struct Environment {
+    store: RefCell<HashMap<String, Object>>,
 }
 
-impl Evaluator {
-    pub fn new() -> Evaluator {
-        Evaluator {
-            env: RefCell::new(HashMap::new()),
+impl Environment {
+    pub fn new() -> Environment {
+        Environment {
+            store: RefCell::new(HashMap::new()),
         }
     }
 
@@ -42,22 +40,24 @@ impl Evaluator {
         Ok(obj)
     }
 
-    fn eval_statement(&self, stmt: Stmt) -> Result<Object> {
+    fn eval_statement(&self, stmt: Stmt) -> Result<Object, String> {
         match stmt {
             Stmt::Let { ident, val } => {
                 let val = self.eval_expression(val)?;
-                self.env.borrow_mut().insert(ident, val.clone());
+                self.store.borrow_mut().insert(ident, val.clone());
                 Ok(val)
             }
+
             Stmt::Return(expr) => {
-                let ret_val = self.eval_expression(expr)?;
-                Ok(Object::ReturnValue(Box::new(ret_val)))
+                let val = self.eval_expression(expr)?;
+                Ok(Object::ReturnValue(Box::new(val)))
             }
+
             Stmt::Expression(expr) => self.eval_expression(expr),
         }
     }
 
-    fn eval_expression(&self, expr: Expr) -> Result<Object> {
+    fn eval_expression(&self, expr: Expr) -> Result<Object, String> {
         match expr {
             Expr::IntLiteral(i) => Ok(Object::Integer(i)),
             Expr::BooleanLiteral(b) => Ok(Object::Boolean(b)),
