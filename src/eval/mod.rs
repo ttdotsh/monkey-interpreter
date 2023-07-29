@@ -1,27 +1,27 @@
+mod env;
 mod object;
-#[cfg(test)]
-mod test;
 
-use crate::ast::{Ast, Expr, Operator, Stmt};
+use super::ast::{Ast, Expr, Operator, Stmt};
+use env::Environment;
 use object::Object;
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, rc::Rc};
 
-pub struct Environment {
-    store: RefCell<HashMap<String, Object>>,
+pub struct Runtime<'e> {
+    env: Rc<RefCell<Environment<'e>>>,
 }
 
-impl Environment {
-    pub fn new() -> Environment {
-        Environment {
-            store: RefCell::new(HashMap::new()),
+impl<'e> Runtime<'e> {
+    pub fn new() -> Runtime<'e> {
+        Runtime {
+            env: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
     pub fn evaluate(&self, ast: Ast) -> Object {
         match self.eval_ast(ast) {
             Ok(Object::ReturnValue(v)) => *v,
-            Err(s) => Object::Error(s),
             Ok(o) => o,
+            Err(s) => Object::Error(s),
         }
     }
 
@@ -42,7 +42,7 @@ impl Environment {
         match stmt {
             Stmt::Let { ident, val } => {
                 let val = self.eval_expression(val)?;
-                self.store.borrow_mut().insert(ident, val.clone());
+                self.env.borrow_mut().set(ident, val.clone());
                 Ok(val)
             }
 
@@ -60,14 +60,10 @@ impl Environment {
             Expr::IntLiteral(i) => Ok(Object::Integer(i)),
             Expr::BooleanLiteral(b) => Ok(Object::Boolean(b)),
 
-            Expr::Ident(s) => {
-                let borrowed_env = self.store.borrow();
-                let var = borrowed_env.get(&s);
-                match var {
-                    Some(o) => Ok(o.clone()),
-                    None => Err(format!("Identifier not found: {}", &s)),
-                }
-            }
+            Expr::Ident(s) => match self.env.borrow().get(&s) {
+                Some(obj) => Ok(obj),
+                None => Err(format!("Identifier not found: {}", &s)),
+            },
 
             Expr::If { check, block, alt } => {
                 if self.eval_expression(*check)?.is_truthy() {
@@ -138,3 +134,6 @@ impl Environment {
         }
     }
 }
+
+#[cfg(test)]
+mod test;

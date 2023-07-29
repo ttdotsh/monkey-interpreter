@@ -1,4 +1,4 @@
-use monkey_interpreter::{eval::Environment, parse::Parser};
+use monkey_interpreter::{eval::Runtime, parse::Parser};
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 const MONKEY_FACE: &str = r#"
@@ -37,7 +37,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
         MONKEY_FACE
     )?;
 
-    let env = Environment::new();
+    let env = Runtime::new();
 
     loop {
         write!(writer, "🐒 -> ")?;
