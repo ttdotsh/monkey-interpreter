@@ -3,7 +3,6 @@ use std::{
     ops::{Add, Div, Mul, Neg, Not, Sub},
 };
 
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum Object {
     /* Types */

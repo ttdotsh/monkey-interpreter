@@ -54,7 +54,7 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             "help" => writeln!(writer, "{}", HELP)?,
             "clear" => write!(writer, "{escape}c", escape = '\x1b' as char)?,
             "monkey" => writeln!(writer, "{}", MONKEY_FACE)?,
-            "exit" => return Ok(()),
+            "exit" => break,
             src => {
                 let mut parser = Parser::new(src);
                 let program = parser.parse();
@@ -73,4 +73,5 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             }
         }
     }
+    Ok(())
 }
