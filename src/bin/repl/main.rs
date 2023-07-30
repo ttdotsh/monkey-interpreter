@@ -1,18 +1,18 @@
-use monkey_interpreter::parse::Parser;
+use monkey_interpreter::{eval::Runtime, parse::Parser};
 use std::io::{stdin, stdout, BufRead, Result, Write};
 
 const MONKEY_FACE: &str = r#"
-           __,__
-  .--.  .-"     "-.  .--.
- / .. \/  .-. .-.  \/ .. \
-| |  '|  /   Y   \  |'  | |
-| \   \  \ 0 | 0 /  /   / |
- \ '- ,\.-"""""""-./, -' /
-  ''-' /_   ^ ^   _\ '-''
-      |  \._   _./  |
-       \  \ '~' /  /
-        '._'-=-'_.'
-          '-----'
+               __,__
+      .--.  .-"     "-.  .--.
+     / .. \/  .-. .-.  \/ .. \
+    | |  '|  /   Y   \  |'  | |
+    | \   \  \ 0 | 0 /  /   / |
+     \ '- ,\.-"""""""-./, -' /
+      ''-' /_   ^ ^   _\ '-''
+          |  \._   _./  |
+           \  \ '~' /  /
+            '._'-=-'_.'
+              '-----'
 "#;
 
 const HELP: &str = r#"
@@ -37,6 +37,8 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
         MONKEY_FACE
     )?;
 
+    let env = Runtime::new();
+
     loop {
         write!(writer, "🐒 -> ")?;
         writer.flush()?;
@@ -52,16 +54,14 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             "help" => writeln!(writer, "{}", HELP)?,
             "clear" => write!(writer, "{escape}c", escape = '\x1b' as char)?,
             "monkey" => writeln!(writer, "{}", MONKEY_FACE)?,
-            "exit" => return Ok(()),
+            "exit" => break,
             src => {
-                // let lex = Lexer::new(src);
                 let mut parser = Parser::new(src);
                 let program = parser.parse();
 
                 if parser.errors.is_empty() {
-                    program
-                        .iter()
-                        .try_for_each(|s| writeln!(&mut writer, "{}", s))?;
+                    let evaluated = &env.evaluate(program);
+                    writeln!(writer, "{}", evaluated)?;
                 } else {
                     writeln!(writer, "Woah, we ran into some errors here:")?;
                     parser
@@ -73,4 +73,5 @@ fn repl<R: BufRead, W: Write>(mut reader: R, mut writer: W) -> Result<()> {
             }
         }
     }
+    Ok(())
 }

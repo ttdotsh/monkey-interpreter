@@ -3,7 +3,7 @@ use std::{fmt::Display, ops::Deref};
 /*
 * Abstract Syntax Tree
 */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Ast(pub Vec<Stmt>);
 
 impl From<Vec<Stmt>> for Ast {
@@ -12,23 +12,10 @@ impl From<Vec<Stmt>> for Ast {
     }
 }
 
-impl Deref for Ast {
-    type Target = Vec<Stmt>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Ast {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl Display for Ast {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
+            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
@@ -40,7 +27,7 @@ impl Display for Ast {
 /*
 * Statements
 */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     Let { ident: String, val: Expr },
     Return(Expr),
@@ -60,7 +47,7 @@ impl Display for Stmt {
 /*
 * Expressions
 */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Ident(String),
     IntLiteral(i32),
@@ -77,7 +64,7 @@ pub enum Expr {
         body: Ast,
     },
     Call {
-        func_name: Box<Expr>,
+        func: Box<Expr>,
         args: Args,
     },
 }
@@ -100,8 +87,8 @@ impl Display for Expr {
             Self::FuncLiteral { params, body } => {
                 write!(f, "fn({}) {{ {} }}", params, body)
             }
-            Self::Call { func_name, args } => {
-                write!(f, "{}({})", func_name, args)
+            Self::Call { func, args } => {
+                write!(f, "{}({})", func, args)
             }
         }
     }
@@ -110,7 +97,7 @@ impl Display for Expr {
 /*
 * Function Parameters and Arguments
 */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionList(Vec<Expr>);
 
 pub type Params = ExpressionList;
@@ -122,17 +109,10 @@ impl From<Vec<Expr>> for ExpressionList {
     }
 }
 
-impl Deref for ExpressionList {
-    type Target = Vec<Expr>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl Display for ExpressionList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self
+            .0
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
@@ -141,10 +121,27 @@ impl Display for ExpressionList {
     }
 }
 
+impl Deref for ExpressionList {
+    type Target = Vec<Expr>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl IntoIterator for ExpressionList {
+    type Item = Expr;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 /*
 * Operators
 */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Bang,
     Plus,
