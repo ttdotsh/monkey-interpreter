@@ -1,25 +1,42 @@
 use super::object::Object;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-pub struct Environment<'e> {
+#[derive(Debug, PartialEq)]
+pub struct Environment {
     store: HashMap<String, Object>,
-    parent: Option<&'e Environment<'e>>,
+    parent: Option<Rc<RefCell<Environment>>>,
 }
 
-impl<'e> Environment<'e> {
-    pub fn new() -> Environment<'e> {
+impl Environment {
+    pub fn new() -> Environment {
         Environment {
             store: HashMap::new(),
             parent: None,
         }
     }
 
-    #[allow(unused)]
-    pub fn make_child(&'e self) -> Environment<'e> {
+    pub fn child_of(parent: &Rc<RefCell<Environment>>) -> Environment {
         Environment {
             store: HashMap::new(),
-            parent: Some(&self),
+            parent: Some(Rc::clone(parent)),
         }
+    }
+
+    // pub fn with(mut self, names: Vec<String>, objs: Vec<Object>) -> Environment {
+    //     names
+    //         .into_iter()
+    //         .zip(objs.into_iter())
+    //         .for_each(|(name, obj)| self.set(name, obj));
+    //     self
+    // }
+
+    pub fn with<K, V>(mut self, keys: K, values: V) -> Environment
+    where
+        K: Iterator<Item = String>,
+        V: Iterator<Item = Object>,
+    {
+        keys.zip(values).for_each(|(k, v)| self.set(k, v));
+        self
     }
 
     pub fn get(&self, key: &str) -> Option<Object> {
@@ -35,9 +52,9 @@ impl<'e> Environment<'e> {
 
     fn check_parent(&self, key: &str) -> Option<Object> {
         match self.parent {
-            Some(parent_env) => match parent_env.store.get(key) {
+            Some(ref parent_env) => match parent_env.borrow().store.get(key) {
                 Some(o) => Some(o.to_owned()),
-                None => parent_env.check_parent(key),
+                None => parent_env.borrow().check_parent(key),
             },
             None => None,
         }
@@ -47,6 +64,7 @@ impl<'e> Environment<'e> {
 #[cfg(test)]
 mod test {
     use super::{Environment, Object};
+    use std::{cell::RefCell, rc::Rc};
 
     #[test]
     fn test_get() {
@@ -62,18 +80,23 @@ mod test {
 
     #[test]
     fn test_check_parent() {
-        let mut env = Environment::new();
-        env.set("five".to_string(), Object::Integer(5));
+        // TODO: This test doesn't reflect actual use, may be worth revisiting the API here
+        let env = Rc::new(RefCell::new(Environment::new()));
+        env.borrow_mut().set("five".to_string(), Object::Integer(5));
 
-        let mut child_env = env.make_child();
-        child_env.set("six".to_string(), Object::Integer(6));
+        let child_env = Rc::new(RefCell::new(Environment::child_of(&env)));
+        child_env
+            .borrow_mut()
+            .set("six".to_string(), Object::Integer(6));
 
-        let mut grandchild_env = child_env.make_child();
-        grandchild_env.set("seven".to_string(), Object::Integer(7));
+        let grandchild_env = Rc::new(RefCell::new(Environment::child_of(&child_env)));
+        grandchild_env
+            .borrow_mut()
+            .set("seven".to_string(), Object::Integer(7));
 
-        let five_from_parent = grandchild_env.get("five");
-        let six_from_child = grandchild_env.get("six");
-        let seven_from_grandchild = grandchild_env.get("seven");
+        let five_from_parent = grandchild_env.borrow().get("five");
+        let six_from_child = grandchild_env.borrow().get("six");
+        let seven_from_grandchild = grandchild_env.borrow().get("seven");
 
         assert_eq!(five_from_parent, Some(Object::Integer(5)));
         assert_eq!(six_from_child, Some(Object::Integer(6)));

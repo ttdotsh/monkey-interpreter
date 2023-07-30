@@ -192,7 +192,7 @@ impl Parser<'_> {
 
     fn parse_func_call_expr(&mut self, function: Expr) -> Result<Expr, ParseError> {
         Ok(Expr::Call {
-            func_name: Box::new(function),
+            func: Box::new(function),
             args: self.parse_func_args()?,
         })
     }

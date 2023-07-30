@@ -1,6 +1,11 @@
+use crate::ast::ExpressionList;
+
+use super::{super::ast::Ast, env::Environment};
 use std::{
+    cell::RefCell,
     fmt::Display,
     ops::{Add, Div, Mul, Neg, Not, Sub},
+    rc::Rc,
 };
 
 #[derive(Debug, Clone)]
@@ -8,6 +13,12 @@ pub enum Object {
     /* Types */
     Integer(i32),
     Boolean(bool),
+
+    Func {
+        params: ExpressionList,
+        body: Ast,
+        env: Rc<RefCell<Environment>>,
+    },
 
     ReturnValue(Box<Object>),
     Error(String),
@@ -19,6 +30,7 @@ impl Display for Object {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Boolean(b) => write!(f, "{}", b),
+            Object::Func { params, body, .. } => write!(f, "fn ({}) {{\n\t{}\n}}", params, body),
             Object::ReturnValue(v) => write!(f, "{}", v),
             Object::Error(s) => write!(f, "{}", s),
             Object::Null => write!(f, "null"),

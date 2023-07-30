@@ -6,12 +6,12 @@ use env::Environment;
 use object::Object;
 use std::{cell::RefCell, rc::Rc};
 
-pub struct Runtime<'e> {
-    env: Rc<RefCell<Environment<'e>>>,
+pub struct Runtime {
+    env: Rc<RefCell<Environment>>,
 }
 
-impl<'e> Runtime<'e> {
-    pub fn new() -> Runtime<'e> {
+impl Runtime {
+    pub fn new() -> Runtime {
         Runtime {
             env: Rc::new(RefCell::new(Environment::new())),
         }
@@ -130,7 +130,39 @@ impl<'e> Runtime<'e> {
                 invalid_op => Err(format!("Unsupported operator as infix: {}", invalid_op)),
             },
 
-            _ => Err(format!("Unsupported expression type: {}", expr)),
+            Expr::FuncLiteral { params, body } => Ok(Object::Func {
+                params,
+                body,
+                env: Rc::clone(&self.env),
+            }),
+
+            Expr::Call { func, args } => {
+                let func = self.eval_expression(*func)?;
+                match func {
+                    Object::Func { params, body, env } => {
+                        let keys = params.into_iter().map(|p| p.to_string());
+                        let values = args
+                            .into_iter()
+                            .map(|arg| self.eval_expression(arg))
+                            .collect::<Result<Vec<Object>, _>>()?
+                            .into_iter();
+
+                        let child_env = Environment::child_of(&env).with(keys, values);
+                        // TODO: probably worth a refactor to avoid making a new runtime for calls
+                        let func_runtime = Runtime::from(child_env);
+                        Ok(func_runtime.evaluate(body))
+                    }
+                    obj => Err(format!("Object {} is not callable", obj)),
+                }
+            }
+        }
+    }
+}
+
+impl From<Environment> for Runtime {
+    fn from(value: Environment) -> Self {
+        Runtime {
+            env: Rc::new(RefCell::new(value)),
         }
     }
 }

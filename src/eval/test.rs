@@ -1,5 +1,12 @@
-use super::{object::Object, Runtime};
-use crate::parse::Parser;
+use super::{
+    super::ast::{Ast, Params},
+    object::Object,
+    Runtime,
+};
+use crate::{
+    ast::{Expr, Operator, Stmt},
+    parse::Parser,
+};
 
 fn test(src: &str) -> Object {
     let mut parser = Parser::new(src);
@@ -168,6 +175,62 @@ fn test_eval_let_stmts() {
             "let a = 5; let b = a; let c = a + b + 5; c;",
             Object::Integer(15),
         ),
+    ];
+    input_and_expected
+        .into_iter()
+        .for_each(|(i, e)| assert_eq!(test(i), e))
+}
+
+#[test]
+fn test_eval_func_def() {
+    let input = "fn(x) { x + 2; };";
+
+    /*
+     * Here, we deviate from the typical pattern of these tests because the Environments
+     * will not be equivalent. An Rc created in this test will not point to the same underlying
+     * Environment allocation in the `test` function, and so the two Object::Func's won't be equal
+     */
+    let expected_params = Params::from(vec![Expr::Ident("x".into())]);
+    let expected_body = Ast::from(vec![Stmt::Expression(Expr::Infix(
+        Box::new(Expr::Ident("x".into())),
+        Operator::Plus,
+        Box::new(Expr::IntLiteral(2)),
+    ))]);
+
+    let obj = test(input);
+    match obj {
+        Object::Func { params, body, .. } => {
+            assert_eq!(params, expected_params);
+            assert_eq!(body, expected_body);
+        }
+        _ => assert!(false),
+    }
+}
+
+#[test]
+fn test_eval_func_call() {
+    let input_and_expected = vec![
+        (
+            "let identity = fn(x) { x; }; identity(5);",
+            Object::Integer(5),
+        ),
+        (
+            "let identity = fn(x) { return x; }; identity(5);",
+            Object::Integer(5),
+        ),
+        (
+            "let double = fn(x) { x * 2; }; double(5);",
+            Object::Integer(10),
+        ),
+        (
+            "let add = fn(x, y) { x + y; }; add(5, 5);",
+            Object::Integer(10),
+        ),
+        (
+            "let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+            Object::Integer(20),
+        ),
+        ("fn(x) { x; }(5)", Object::Integer(5)),
     ];
     input_and_expected
         .into_iter()

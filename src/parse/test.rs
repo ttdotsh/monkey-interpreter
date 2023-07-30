@@ -400,7 +400,7 @@ fn test_parse_call_expression() {
     assert!(errors.is_empty());
 
     let expected_statements = vec![Stmt::Expression(Expr::Call {
-        func_name: Box::new(Expr::Ident(String::from("add"))),
+        func: Box::new(Expr::Ident(String::from("add"))),
         args: Args::from(vec![
             Expr::IntLiteral(1),
             Expr::Infix(
